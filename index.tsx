@@ -63,7 +63,7 @@ export function findDescendant(
       children = (children as ReactElement).props.children
     }
 
-    children = Children.toArray(children).find(
+    children = flattenChildren(children).find(
       (_, childIndex) => childIndex === searchIndex
     )
   }
