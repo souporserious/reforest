@@ -12,6 +12,8 @@ npm install use-indexed-children
 
 ## Usage
 
+Please note the following is for demo purposes only and you should use a more robust solution that is accessible.
+
 ```tsx
 import * as React from "react"
 import {
@@ -20,10 +22,25 @@ import {
   useIndexPath,
 } from "use-indexed-children"
 
+const SelectContext = React.createContext<any>(null)
+
 function Select({ children }: { children: React.ReactNode }) {
+  const selectedIndexPathState = React.useState(null)
+  const [selectedIndexPath] = selectedIndexPathState
+  const descendant = useDescendant(children, selectedIndexPath)
   const indexedChildren = useIndexedChildren(children)
 
-  return <div>{indexedChildren}</div>
+  return (
+    <div>
+      {descendant
+        ? `Selected: ${descendant.props.children}`
+        : `Select an option below`}
+
+      <SelectContext.Provider value={selectedIndexPathState}>
+        {indexedChildren}
+      </SelectContext.Provider>
+    </div>
+  )
 }
 
 function Option({
@@ -34,10 +51,13 @@ function Option({
   value: any
 }) {
   const indexPath = useIndexPath()
+  const selectContext = React.useContext(SelectContext)
+  const [selectedIndexPath, setSelectedIndexPath] = selectContext
+  const isSelected = indexPath === selectedIndexPath
 
   return (
-    <div>
-      {children} {indexPath}
+    <div onClick={() => setSelectedIndexPath(isSelected ? null : indexPath)}>
+      {isSelected ? "✅" : "⬜️"} {children}
     </div>
   )
 }
