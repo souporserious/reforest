@@ -2,6 +2,8 @@
 
 Manages and provides descendant index paths.
 
+[Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
+
 ## Install
 
 ```bash
