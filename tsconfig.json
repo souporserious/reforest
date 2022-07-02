@@ -20,7 +20,7 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
-    "jsx": "react-jsx",
+    "jsx": "react",
     "esModuleInterop": true
   }
 }

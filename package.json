@@ -1,6 +1,6 @@
 {
   "name": "use-indexed-children",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Returns the index of a descendant component.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
