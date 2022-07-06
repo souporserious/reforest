@@ -1,18 +1,18 @@
 {
   "name": "use-indexed-children",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Returns the index of a descendant component.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "typings": "dist/index.d.ts",
   "sideEffects": false,
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
+    "prepublishOnly": "pnpm build",
     "build": "tsup index.tsx --dts --format esm,cjs --legacy-output",
-    "dev": "yarn build --watch --sourcemap",
+    "dev": "pnpm build --watch --sourcemap",
     "test": "jest",
     "test:watch": "jest --watch"
   },

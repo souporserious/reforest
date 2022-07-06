@@ -1,6 +1,5 @@
 import type { ReactNode, ReactElement } from "react"
 import React, {
-  Children,
   createContext,
   isValidElement,
   useContext,
@@ -8,6 +7,7 @@ import React, {
 } from "react"
 import flattenChildren from "react-keyed-flatten-children"
 
+const MaxIndexContext = createContext<number[]>([])
 const IndexContext = createContext<string>("")
 
 /**
@@ -22,7 +22,14 @@ export function parseIndexPath(indexPathString: string) {
 
 /** Returns the current index path this hook is rendered in. */
 export function useIndexPath() {
+  const maxIndexPath = useContext(MaxIndexContext)
   const indexPathString = useContext(IndexContext)
+  const indexPath = useMemo(
+    () => parseIndexPath(indexPathString),
+    [indexPathString]
+  )
+  const maxIndex = maxIndexPath[maxIndexPath.length - 1]
+  const index = indexPath[indexPath.length - 1]
 
   if (indexPathString === "") {
     throw new Error(
@@ -30,23 +37,40 @@ export function useIndexPath() {
     )
   }
 
-  return indexPathString
+  return {
+    maxIndex,
+    index,
+    maxIndexPath,
+    indexPath,
+    isFirstIndex: index === 0,
+    isLastIndex: index === maxIndex,
+    isEven: index % 2 === 0,
+    isOdd: Math.abs(index % 2) === 1,
+  }
 }
 
 /** Passes an index to each child regardless of fragments. */
 export function useIndexedChildren(children: ReactNode) {
+  const parentMaxIndex = useContext(MaxIndexContext)
   const indexPathString = useContext(IndexContext)
+  const flattenedChildren = flattenChildren(children).filter(isValidElement)
+  const maxIndex = useMemo(
+    () => parentMaxIndex.concat(flattenedChildren.length),
+    [flattenedChildren.length]
+  )
 
-  return flattenChildren(children)
-    .filter(isValidElement)
-    .map((child, index) => (
-      <IndexContext.Provider
-        key={child.key}
-        value={indexPathString + index.toString()}
-      >
-        {child}
-      </IndexContext.Provider>
-    ))
+  return (
+    <MaxIndexContext.Provider value={maxIndex}>
+      {flattenedChildren.map((child, index) => (
+        <IndexContext.Provider
+          key={child.key}
+          value={indexPathString + index.toString()}
+        >
+          {child}
+        </IndexContext.Provider>
+      ))}
+    </MaxIndexContext.Provider>
+  )
 }
 
 /** Finds a descendant child based on its index path. */

@@ -94,8 +94,7 @@ function Option({
   children: React.ReactNode
   value: any
 }) {
-  const indexPath = useIndexPath()
-  const index = parseInt(indexPath, 10)
+  const { indexPath, index } = useIndexPath()
   const selectContext = React.useContext(SelectContext)
   const [highlightedIndex, setHighlightedIndex] =
     selectContext.highlightedIndexState
@@ -106,7 +105,7 @@ function Option({
 
   return (
     <div
-      onMouseOver={() => setHighlightedIndex(parseInt(indexPath, 10))}
+      onMouseOver={() => setHighlightedIndex(index)}
       onMouseOut={() => setHighlightedIndex(null)}
       onClick={() => selectContext.selectIndex(indexPath)}
       style={{ backgroundColor: isHighlighted ? "yellow" : "white" }}
