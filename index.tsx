@@ -32,9 +32,7 @@ export function useIndexPath() {
   const index = indexPath[indexPath.length - 1]
 
   if (indexPathString === "") {
-    throw new Error(
-      "The useIndexPath hook must be a descendant of useIndexedChildren."
-    )
+    return null
   }
 
   return {
