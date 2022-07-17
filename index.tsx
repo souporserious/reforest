@@ -33,6 +33,7 @@ export function useIndex() {
     maxIndexPath,
     index,
     indexPath,
+    indexPathString,
     isFirst: index === 0,
     isLast: index === maxIndex,
     isEven: index % 2 === 0,
