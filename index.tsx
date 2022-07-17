@@ -1,14 +1,7 @@
-import type { ReactNode, ReactElement } from "react"
-import React, {
-  createContext,
-  isValidElement,
-  useContext,
-  useMemo,
-} from "react"
-import flattenChildren from "react-keyed-flatten-children"
+import * as React from "react"
 
-const MaxIndexContext = createContext<number[]>([])
-const IndexContext = createContext<string>("")
+const MaxIndexContext = React.createContext<number[]>([])
+const IndexContext = React.createContext<string>("")
 
 /**
  * Parses a numerical string as an index path.
@@ -20,11 +13,11 @@ export function parseIndexPath(indexPathString: string) {
   return indexPathString.split("").map((index) => parseInt(index, 10))
 }
 
-/** Returns the current index path this hook is rendered in. */
-export function useIndexPath() {
-  const maxIndexPath = useContext(MaxIndexContext)
-  const indexPathString = useContext(IndexContext)
-  const indexPath = useMemo(
+/** Returns the index path data based on the closest useIndexedChildren. */
+export function useIndex() {
+  const maxIndexPath = React.useContext(MaxIndexContext)
+  const indexPathString = React.useContext(IndexContext)
+  const indexPath = React.useMemo(
     () => parseIndexPath(indexPathString),
     [indexPathString]
   )
@@ -37,68 +30,72 @@ export function useIndexPath() {
 
   return {
     maxIndex,
-    index,
     maxIndexPath,
+    index,
     indexPath,
-    isFirstIndex: index === 0,
-    isLastIndex: index === maxIndex,
+    isFirst: index === 0,
+    isLast: index === maxIndex,
     isEven: index % 2 === 0,
     isOdd: Math.abs(index % 2) === 1,
   }
 }
 
-/** Passes an index to each child regardless of fragments. */
-export function useIndexedChildren(children: ReactNode) {
-  const parentMaxIndex = useContext(MaxIndexContext)
-  const indexPathString = useContext(IndexContext)
-  const flattenedChildren = flattenChildren(children).filter(isValidElement)
-  const maxIndex = useMemo(
-    () => parentMaxIndex.concat(flattenedChildren.length),
-    [flattenedChildren.length]
+/** Provides the current index path for each child. */
+export function useIndexedChildren(children: React.ReactNode) {
+  const parentMaxIndexPath = React.useContext(MaxIndexContext)
+  const indexPathString = React.useContext(IndexContext)
+  const childrenCount = React.Children.count(children)
+  const maxIndexPath = React.useMemo(
+    () => parentMaxIndexPath.concat(childrenCount),
+    [childrenCount]
   )
 
   return (
-    <MaxIndexContext.Provider value={maxIndex}>
-      {flattenedChildren.map((child, index) => (
-        <IndexContext.Provider
-          key={child.key}
-          value={indexPathString + index.toString()}
-        >
-          {child}
-        </IndexContext.Provider>
-      ))}
+    <MaxIndexContext.Provider value={maxIndexPath}>
+      {React.Children.map(children, (child, index) =>
+        React.isValidElement(child) ? (
+          <IndexContext.Provider
+            key={child.key}
+            value={indexPathString + index.toString()}
+          >
+            {child}
+          </IndexContext.Provider>
+        ) : (
+          child
+        )
+      )}
     </MaxIndexContext.Provider>
   )
 }
 
 /** Finds a descendant child based on its index path. */
 export function findDescendant(
-  children: ReactNode,
+  children: React.ReactNode,
   indexPath: string
-): ReactElement {
+): React.ReactElement {
   let path = parseIndexPath(indexPath)
 
   while (path.length > 0) {
     let searchIndex = path.shift()
 
-    if (isValidElement(children)) {
-      children = (children as ReactElement).props.children
+    if (React.isValidElement(children)) {
+      children = (children as React.ReactElement).props.children
     }
 
-    children = flattenChildren(children).find(
+    children = React.Children.toArray(children).find(
       (_, childIndex) => childIndex === searchIndex
     )
   }
 
-  return children as ReactElement
+  return children as React.ReactElement
 }
 
 /** Returns a memoized descendant child using its index path. */
 export function useDescendant(
-  children: ReactNode,
+  children: React.ReactNode,
   indexPath: string | null
-): ReactElement | null {
-  return useMemo(
+): React.ReactElement | null {
+  return React.useMemo(
     () => (indexPath ? findDescendant(children, indexPath) : null),
     [children, indexPath]
   )

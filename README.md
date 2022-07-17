@@ -1,6 +1,6 @@
 # use-indexed-children
 
-Manages and provides descendant index paths.
+Index data for descendant React elements.
 
 [Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
 
@@ -8,6 +8,10 @@ Manages and provides descendant index paths.
 
 ```bash
 npm install use-indexed-children
+```
+
+```bash
+yarn add use-indexed-children
 ```
 
 ## Usage
@@ -18,8 +22,8 @@ Please note the following example is for demo purposes only and you should use a
 import * as React from "react"
 import {
   findDescendant,
+  useIndex,
   useIndexedChildren,
-  useIndexPath,
 } from "use-indexed-children"
 
 const SelectContext = React.createContext<any>(null)
@@ -94,7 +98,7 @@ function Option({
   children: React.ReactNode
   value: any
 }) {
-  const { indexPath, index } = useIndexPath()
+  const { indexPath, index } = useIndex()
   const selectContext = React.useContext(SelectContext)
   const [highlightedIndex, setHighlightedIndex] =
     selectContext.highlightedIndexState
