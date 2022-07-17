@@ -10,7 +10,7 @@ const IndexContext = React.createContext<string>("")
  * parseIndexPath('028') -> [0, 2, 8]
  */
 export function parseIndexPath(indexPathString: string) {
-  return indexPathString.split("").map((index) => parseInt(index, 10))
+  return indexPathString.split(".").map((index) => parseInt(index, 10))
 }
 
 /** Returns the index path data based on the closest useIndexedChildren. */
@@ -57,7 +57,7 @@ export function useIndexedChildren(children: React.ReactNode) {
         React.isValidElement(child) ? (
           <IndexContext.Provider
             key={child.key}
-            value={indexPathString + index.toString()}
+            value={`${indexPathString}.${index.toString()}`}
           >
             {child}
           </IndexContext.Provider>
