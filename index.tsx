@@ -71,9 +71,9 @@ export function useIndexedChildren(children: React.ReactNode) {
 /** Finds a descendant child based on its index path. */
 export function findDescendant(
   children: React.ReactNode,
-  indexPath: string
+  indexPath: number[]
 ): React.ReactElement {
-  let path = parseIndexPath(indexPath)
+  let path = indexPath.slice()
 
   while (path.length > 0) {
     let searchIndex = path.shift()
@@ -93,7 +93,7 @@ export function findDescendant(
 /** Returns a memoized descendant child using its index path. */
 export function useDescendant(
   children: React.ReactNode,
-  indexPath: string | null
+  indexPath: number[] | null
 ): React.ReactElement | null {
   return React.useMemo(
     () => (indexPath ? findDescendant(children, indexPath) : null),
