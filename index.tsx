@@ -1,7 +1,7 @@
 import * as React from "react"
 
 const MaxIndexContext = React.createContext<number[]>([])
-const IndexContext = React.createContext<string>("")
+const IndexContext = React.createContext<string | null>(null)
 
 /**
  * Parses a numerical string as an index path.
@@ -18,13 +18,13 @@ export function useIndex() {
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
   const indexPath = React.useMemo(
-    () => parseIndexPath(indexPathString),
+    () => (indexPathString ? parseIndexPath(indexPathString) : []),
     [indexPathString]
   )
   const maxIndex = maxIndexPath[maxIndexPath.length - 1]
   const index = indexPath[indexPath.length - 1]
 
-  if (indexPathString === "") {
+  if (indexPathString === null) {
     return null
   }
 
@@ -57,7 +57,11 @@ export function useIndexedChildren(children: React.ReactNode) {
         React.isValidElement(child) ? (
           <IndexContext.Provider
             key={child.key}
-            value={`${indexPathString}.${index.toString()}`}
+            value={
+              indexPathString
+                ? `${indexPathString}.${index.toString()}`
+                : index.toString()
+            }
           >
             {child}
           </IndexContext.Provider>
