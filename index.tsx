@@ -17,28 +17,28 @@ export function parseIndexPath(indexPathString: string) {
 export function useIndex() {
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
-  const indexPath = React.useMemo(
-    () => (indexPathString ? parseIndexPath(indexPathString) : []),
-    [indexPathString]
-  )
-  const maxIndex = maxIndexPath[maxIndexPath.length - 1]
-  const index = indexPath[indexPath.length - 1]
 
-  if (indexPathString === null) {
-    return null
-  }
+  return React.useMemo(() => {
+    if (indexPathString === null) {
+      return null
+    }
 
-  return {
-    maxIndex,
-    maxIndexPath,
-    index,
-    indexPath,
-    indexPathString,
-    isFirst: index === 0,
-    isLast: index === maxIndex,
-    isEven: index % 2 === 0,
-    isOdd: Math.abs(index % 2) === 1,
-  }
+    const indexPath = parseIndexPath(indexPathString)
+    const maxIndex = maxIndexPath[maxIndexPath.length - 1]
+    const index = indexPath[indexPath.length - 1]
+
+    return {
+      maxIndex,
+      maxIndexPath,
+      index,
+      indexPath,
+      indexPathString,
+      isFirst: index === 0,
+      isLast: index === maxIndex,
+      isEven: index % 2 === 0,
+      isOdd: Math.abs(index % 2) === 1,
+    }
+  }, [maxIndexPath, indexPathString])
 }
 
 /** Provides the current index path for each child. */
