@@ -19,7 +19,7 @@ export function parseIndexPath(indexPathString: string) {
   return indexPathString.split(".").map((index) => parseInt(index, 10))
 }
 
-export const indexChildrenMap = proxyMap()
+export const indexedTrees = proxyMap()
 
 /**
  * Returns the index path data based on the closest useIndexedChildren.
@@ -55,15 +55,9 @@ export function useIndex<Data extends any>(data: Data | null = null) {
     if (data === null || indexData === null || index === null) {
       return
     }
+    const { indexPathString } = index
 
-    const { indexPathString, indexPath } = index
-    const parentIndexPathString = indexPath.slice(0, -1).join(".")
-
-    indexData.set(indexPathString, {
-      indexPathString,
-      parentIndexPathString,
-      data,
-    } as any)
+    indexData.set(indexPathString, data)
 
     return () => {
       indexData.delete(indexPathString)
@@ -72,14 +66,9 @@ export function useIndex<Data extends any>(data: Data | null = null) {
 
   /** Capture the initial data when rendering on the server. */
   if (isServer && indexData && index) {
-    const { indexPathString, indexPath } = index
-    const parentIndexPathString = indexPath.slice(0, -1).join(".")
+    const { indexPathString } = index
 
-    indexData.set(indexPathString, {
-      indexPathString,
-      parentIndexPathString,
-      data,
-    } as any)
+    indexData.set(indexPathString, data)
   }
 
   return index
@@ -91,46 +80,34 @@ type Tree = {
   [key: string]: any
 }
 
-/**
- * Simple recursive function that removes indexPathString and parentIndexPathString
- * keys as well as normalizes simple data types.
- */
+/** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
 function cleanTree(tree: Tree | Array<any>) {
   if (Array.isArray(tree)) {
     return cleanTree({ children: tree }).children
   }
 
-  tree.children?.forEach((child) => {
-    delete child.parentIndexPathString
-    delete child.indexPathString
-
-    if (child?.children?.length === 0) {
-      delete child.children
+  if (tree.children && tree.children?.length > 0) {
+    return {
+      ...tree.data,
+      children: tree.children.map(cleanTree),
     }
+  }
 
-    Object.assign(child, child.data)
-
-    delete child.data
-
-    cleanTree(child)
-  })
-
-  return tree
+  return tree.data
 }
 
 /** Builds an index tree from a Map of index paths. */
 export function buildTree(indexMap: Map<string, any>) {
-  const sortedKeys = Array.from(indexMap.keys()).sort()
-  const values = Array.from(indexMap.values())
-  const sortedValues = sortedKeys.map((_, index) => {
-    const data = values[index]
-    return data
+  const parsedValues = Array.from(indexMap.entries()).map(([indexPathString, data]) => {
+    const parentIndexPathString = parseIndexPath(indexPathString.toString()).slice(0, -1).join(".")
+
+    return {
+      data,
+      id: indexPathString,
+      parentId: parentIndexPathString,
+    }
   })
-  const tree = arrayToTree(sortedValues, {
-    id: "indexPathString",
-    parentId: "parentIndexPathString",
-    dataField: null,
-  })
+  const tree = arrayToTree(parsedValues, { dataField: null })
   const cleanedTree = cleanTree(tree)
 
   return cleanedTree
@@ -139,11 +116,11 @@ export function buildTree(indexMap: Map<string, any>) {
 /** Provides the current index path for each child. */
 export function useIndexedChildren(
   children: React.ReactNode,
-  onTreeUpdate?: <UpdatedTree extends Tree>(tree: UpdatedTree) => void
+  onTreeUpdate?: <UpdatedTree extends any[]>(tree: UpdatedTree) => void
 ) {
   const id = React.useId().slice(1, -1)
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
-  const indexPathString = React.useContext(IndexContext)
+  const parentIndexPathString = React.useContext(IndexContext)
   const indexData = React.useContext(IndexDataContext)
   const indexDataRef = React.useRef<Map<string, any> | null>(null)
   const childrenCount = React.Children.count(children)
@@ -163,7 +140,7 @@ export function useIndexedChildren(
 
     /** Capture the initial data in render when running on the server. */
     if (isServer) {
-      indexChildrenMap.set(id, indexDataRef.current)
+      indexedTrees.set(id, indexDataRef.current)
     }
   } else {
     indexDataRef.current = indexData
@@ -174,18 +151,18 @@ export function useIndexedChildren(
       return
     }
 
-    function handleUpdate() {
+    function buildIndexTree() {
       if (indexDataRef.current && onTreeUpdateRef.current) {
         const tree = buildTree(indexDataRef.current)
         onTreeUpdateRef.current(tree)
       }
     }
 
-    /** Build initial tree once children have rendered. */
-    handleUpdate()
+    /** Build initial index tree once children have rendered. */
+    buildIndexTree()
 
     /** Subscribe to future updates to the tree. */
-    return subscribe(indexDataRef.current!, handleUpdate)
+    return subscribe(indexDataRef.current!, buildIndexTree)
   }, [])
 
   const childrenToRender = (
@@ -194,7 +171,11 @@ export function useIndexedChildren(
         React.isValidElement(child) ? (
           <IndexContext.Provider
             key={child.key}
-            value={indexPathString ? `${indexPathString}.${index.toString()}` : index.toString()}
+            value={
+              parentIndexPathString === null
+                ? index.toString()
+                : `${parentIndexPathString}.${index.toString()}`
+            }
           >
             {child}
           </IndexContext.Provider>
