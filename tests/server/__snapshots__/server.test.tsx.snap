@@ -1,0 +1,17 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`server-side rendering 1`] = `
+Array [
+  Array [
+    Object {
+      "value": "apple",
+    },
+    Object {
+      "value": "orange",
+    },
+    Object {
+      "value": "banana",
+    },
+  ],
+]
+`;
