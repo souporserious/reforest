@@ -1,7 +1,7 @@
 import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 
-import { buildTree, indexedTrees, useIndex, useIndexedChildren } from "../../index"
+import { createIndexedTreeProvider, buildTree, useIndex, useIndexedChildren } from "../../index"
 
 function Item({ children, value }: { children: React.ReactNode; value: string }) {
   const index = useIndex({ value })
@@ -15,12 +15,16 @@ function ItemList({ children }: { children: React.ReactNode }) {
 }
 
 test("server-side rendering", () => {
+  const { IndexTreeProvider, indexedTrees } = createIndexedTreeProvider()
+
   ReactDOMServer.renderToString(
-    <ItemList>
-      <Item value="apple">Apple</Item>
-      <Item value="orange">Orange</Item>
-      <Item value="banana">Banana</Item>
-    </ItemList>
+    <IndexTreeProvider>
+      <ItemList>
+        <Item value="apple">Apple</Item>
+        <Item value="orange">Orange</Item>
+        <Item value="banana">Banana</Item>
+      </ItemList>
+    </IndexTreeProvider>
   )
 
   const indexTrees = Array.from(indexedTrees.values()).map((indexMap) =>

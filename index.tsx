@@ -3,11 +3,17 @@ import { arrayToTree } from "performant-array-to-tree"
 import { subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
+const IndexedTree = React.createContext<Map<string, any> | null>(null)
 const MaxIndexContext = React.createContext<number[]>([])
 const IndexContext = React.createContext<string | null>(null)
 const IndexDataContext = React.createContext<Map<string, any> | null>(null)
 const isServer = typeof window === "undefined"
 const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
+
+IndexedTree.displayName = "IndexedTree.Provider"
+MaxIndexContext.displayName = "MaxIndexContext.Provider"
+IndexContext.displayName = "IndexContext.Provider"
+IndexDataContext.displayName = "IndexDataContext.Provider"
 
 /**
  * Parses a numerical dot-separated string as an index path.
@@ -19,7 +25,19 @@ export function parseIndexPath(indexPathString: string) {
   return indexPathString.split(".").map((index) => parseInt(index, 10))
 }
 
-export const indexedTrees = proxyMap()
+/** Wraps a tree with a Map for gathering indexed data on the server. */
+export function createIndexedTreeProvider() {
+  const indexedTrees = proxyMap<string, any>()
+
+  function IndexTreeProvider(props: { children: React.ReactNode }) {
+    return <IndexedTree.Provider value={indexedTrees}>{props.children}</IndexedTree.Provider>
+  }
+
+  return {
+    IndexTreeProvider,
+    indexedTrees,
+  }
+}
 
 /**
  * Returns the index path data based on the closest useIndexedChildren.
@@ -119,6 +137,7 @@ export function useIndexedChildren(
   onTreeUpdate?: <UpdatedTree extends any[]>(tree: UpdatedTree) => void
 ) {
   const id = React.useId().slice(1, -1)
+  const serverContext = React.useContext(IndexedTree)
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
   const parentIndexPathString = React.useContext(IndexContext)
   const indexData = React.useContext(IndexDataContext)
@@ -139,8 +158,8 @@ export function useIndexedChildren(
     indexDataRef.current = proxyMap()
 
     /** Capture the initial data in render when running on the server. */
-    if (isServer) {
-      indexedTrees.set(id, indexDataRef.current)
+    if (isServer && serverContext) {
+      serverContext.set(id, indexDataRef.current)
     }
   } else {
     indexDataRef.current = indexData
