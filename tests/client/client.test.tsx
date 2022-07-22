@@ -4,25 +4,25 @@ import "@testing-library/jest-dom"
 
 import { useIndexedDataEffect, useIndex, useIndexedChildren } from "../../index"
 
-function Item({ children, value }: { children: React.ReactNode; value: string }) {
-  const index = useIndex({ value })
-  const indexedChildren = useIndexedChildren(children)
-  return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
-}
-
-function ItemList({ children }: { children: React.ReactNode }) {
-  const indexedChildren = useIndexedChildren(children)
-  return <>{indexedChildren}</>
-}
-
-function Selected() {
-  useIndexedDataEffect((tree) => {
-    // console.log("Selected: ", tree)
-  })
-  return <div>Selected</div>
-}
-
 test("renders a simple list of items with the correct indexes", () => {
+  const handleTreeUpdate = jest.fn()
+
+  function Item({ children, value }: { children: React.ReactNode; value: string }) {
+    const index = useIndex({ value })
+    const indexedChildren = useIndexedChildren(children)
+    return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
+  }
+
+  function ItemList({ children }: { children: React.ReactNode }) {
+    const indexedChildren = useIndexedChildren(children)
+    return <>{indexedChildren}</>
+  }
+
+  function Selected() {
+    useIndexedDataEffect(handleTreeUpdate)
+    return <div>Selected</div>
+  }
+
   const { queryByTestId } = render(
     <>
       <Selected />
@@ -35,9 +35,24 @@ test("renders a simple list of items with the correct indexes", () => {
   )
 
   expect(queryByTestId("1")).toHaveTextContent("Orange")
+
+  expect(handleTreeUpdate).toHaveBeenCalledTimes(1)
 })
 
 test("renders a complex list of items with the correct indexes", () => {
+  const handleTreeUpdate = jest.fn()
+
+  function Item({ children, value }: { children: React.ReactNode; value: string }) {
+    const index = useIndex({ value })
+    const indexedChildren = useIndexedChildren(children)
+    return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
+  }
+
+  function ItemList({ children }: { children: React.ReactNode }) {
+    const indexedChildren = useIndexedChildren(children, handleTreeUpdate)
+    return <>{indexedChildren}</>
+  }
+
   const { queryByTestId } = render(
     <ItemList>
       <Item value="apples">
@@ -62,4 +77,8 @@ test("renders a complex list of items with the correct indexes", () => {
   )
 
   expect(queryByTestId("2.3")).toHaveTextContent("Bosc")
+
+  expect(handleTreeUpdate).toHaveBeenCalledTimes(1)
+
+  expect(handleTreeUpdate).toMatchSnapshot()
 })

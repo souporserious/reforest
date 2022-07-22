@@ -1,0 +1,60 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders a complex list of items with the correct indexes 1`] = `
+[MockFunction] {
+  "calls": Array [
+    Array [
+      Array [
+        Object {
+          "children": Array [
+            Object {
+              "value": "fuji",
+            },
+            Object {
+              "value": "gala",
+            },
+            Object {
+              "value": "honeycrisp",
+            },
+          ],
+          "value": "apples",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "value": "mandarin",
+            },
+            Object {
+              "value": "naval",
+            },
+            Object {
+              "value": "tangerine",
+            },
+          ],
+          "value": "apples",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "value": "anjou",
+            },
+            Object {
+              "value": "asian",
+            },
+            Object {
+              "value": "bosc",
+            },
+          ],
+          "value": "pears",
+        },
+      ],
+    ],
+  ],
+  "results": Array [
+    Object {
+      "type": "return",
+      "value": undefined,
+    },
+  ],
+}
+`;

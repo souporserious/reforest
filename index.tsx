@@ -217,7 +217,7 @@ export function useIndexedChildren(
 
   /** Optionally subscribe to this trees data changes. */
   useIsomorphicLayoutEffect(() => {
-    if (indexedData === null || onTreeUpdateRef.current === undefined) {
+    if (onTreeUpdateRef.current === undefined) {
       return
     }
 
@@ -232,7 +232,9 @@ export function useIndexedChildren(
     buildIndexedTree()
 
     /** Subscribe to future updates to tree. */
-    return subscribe(indexedData, buildIndexedTree)
+    if (indexDataRef.current) {
+      return subscribe(indexDataRef.current, buildIndexedTree)
+    }
   }, [indexedData])
 
   const childrenToRender = (
