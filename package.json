@@ -1,6 +1,6 @@
 {
   "name": "use-indexed-children",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "Index data for descendant React elements.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
