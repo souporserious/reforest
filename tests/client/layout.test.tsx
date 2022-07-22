@@ -132,7 +132,7 @@ function App() {
 }
 
 test("renders and computes layout", () => {
-  const { container } = render(<App />)
+  const { findByText } = render(<App />)
 
-  console.log(container.innerHTML)
+  findByText("Box")
 })

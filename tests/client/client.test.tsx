@@ -2,7 +2,7 @@ import * as React from "react"
 import { render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
-import { useIndex, useIndexedChildren } from "../../index"
+import { useIndexedDataEffect, useIndex, useIndexedChildren } from "../../index"
 
 function Item({ children, value }: { children: React.ReactNode; value: string }) {
   const index = useIndex({ value })
@@ -15,13 +15,23 @@ function ItemList({ children }: { children: React.ReactNode }) {
   return <>{indexedChildren}</>
 }
 
+function Selected() {
+  useIndexedDataEffect((tree) => {
+    // console.log("Selected: ", tree)
+  })
+  return <div>Selected</div>
+}
+
 test("renders a simple list of items with the correct indexes", () => {
   const { queryByTestId } = render(
-    <ItemList>
-      <Item value="apple">Apple</Item>
-      <Item value="orange">Orange</Item>
-      <Item value="banana">Banana</Item>
-    </ItemList>
+    <>
+      <Selected />
+      <ItemList>
+        <Item value="apple">Apple</Item>
+        <Item value="orange">Orange</Item>
+        <Item value="banana">Banana</Item>
+      </ItemList>
+    </>
   )
 
   expect(queryByTestId("1")).toHaveTextContent("Orange")

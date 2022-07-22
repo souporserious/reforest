@@ -3,17 +3,18 @@ import { arrayToTree } from "performant-array-to-tree"
 import { subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
-const IndexedTree = React.createContext<Map<string, any> | null>(null)
-const MaxIndexContext = React.createContext<number[]>([])
-const IndexContext = React.createContext<string | null>(null)
-const IndexDataContext = React.createContext<Map<string, any> | null>(null)
 const isServer = typeof window === "undefined"
 const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
-IndexedTree.displayName = "IndexedTree.Provider"
-MaxIndexContext.displayName = "MaxIndexContext.Provider"
-IndexContext.displayName = "IndexContext.Provider"
-IndexDataContext.displayName = "IndexDataContext.Provider"
+const MaxIndexContext = React.createContext<number[]>([])
+const IndexContext = React.createContext<string | null>(null)
+export const IndexedTreesContext = React.createContext<Map<string, any>>(proxyMap<string, any>())
+export const IndexedDataContext = React.createContext<Map<string, any> | null>(null)
+
+MaxIndexContext.displayName = "MaxIndexContext"
+IndexContext.displayName = "IndexContext"
+IndexedTreesContext.displayName = "IndexedTreesContext"
+IndexedDataContext.displayName = "IndexedDataContext"
 
 /**
  * Parses a numerical dot-separated string as an index path.
@@ -30,13 +31,49 @@ export function createIndexedTreeProvider() {
   const indexedTrees = proxyMap<string, any>()
 
   function IndexTreeProvider(props: { children: React.ReactNode }) {
-    return <IndexedTree.Provider value={indexedTrees}>{props.children}</IndexedTree.Provider>
+    return (
+      <IndexedTreesContext.Provider value={indexedTrees}>
+        {props.children}
+      </IndexedTreesContext.Provider>
+    )
   }
 
   return {
     IndexTreeProvider,
     indexedTrees,
   }
+}
+
+/** Subscribe to any changes to the overall indexed data. */
+export function useIndexedDataEffect(
+  onTreeUpdate: <UpdatedTree extends any[]>(tree: UpdatedTree) => void
+) {
+  const indexedTrees = React.useContext(IndexedTreesContext)
+  const indexedData = React.useContext(IndexedDataContext)
+  const onTreeUpdateRef = React.useRef<typeof onTreeUpdate>(onTreeUpdate)
+
+  useIsomorphicLayoutEffect(() => {
+    onTreeUpdateRef.current = onTreeUpdate
+  })
+
+  useIsomorphicLayoutEffect(() => {
+    function buildIndexedTree() {
+      const trees = Array.from(indexedTrees.values()).map(buildTreeFromMap)
+      onTreeUpdateRef.current(trees)
+    }
+
+    /** Build initial index tree once children have rendered. */
+    buildIndexedTree()
+
+    /** Subscribe to future updates to indexed trees. */
+    const indexedTreesCleanup = subscribe(indexedTrees, buildIndexedTree)
+    const indexedDataCleanup = indexedData ? subscribe(indexedData, buildIndexedTree) : null
+
+    return () => {
+      indexedTreesCleanup()
+      indexedDataCleanup?.()
+    }
+  }, [indexedTrees, indexedData])
 }
 
 /**
@@ -46,7 +83,7 @@ export function createIndexedTreeProvider() {
 export function useIndex<Data extends any>(data: Data | null = null) {
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
-  const indexData = React.useContext(IndexDataContext)
+  const indexedData = React.useContext(IndexedDataContext)
   const index = React.useMemo(() => {
     if (indexPathString === null) {
       return null
@@ -70,23 +107,23 @@ export function useIndex<Data extends any>(data: Data | null = null) {
   }, [maxIndexPath, indexPathString])
 
   useIsomorphicLayoutEffect(() => {
-    if (data === null || indexData === null || index === null) {
+    if (data === null || indexedData === null || index === null) {
       return
     }
     const { indexPathString } = index
 
-    indexData.set(indexPathString, data)
+    indexedData.set(indexPathString, data)
 
     return () => {
-      indexData.delete(indexPathString)
+      indexedData.delete(indexPathString)
     }
-  }, [data, index])
+  }, [indexedData, data, index])
 
   /** Capture the initial data when rendering on the server. */
-  if (isServer && indexData && index) {
+  if (isServer && indexedData && index) {
     const { indexPathString } = index
 
-    indexData.set(indexPathString, data)
+    indexedData.set(indexPathString, data)
   }
 
   return index
@@ -115,7 +152,7 @@ function cleanTree(tree: Tree | Array<any>) {
 }
 
 /** Builds an index tree from a Map of index paths. */
-export function buildTree(indexMap: Map<string, any>) {
+export function buildTreeFromMap(indexMap: Map<string, any>) {
   const parsedValues = Array.from(indexMap.entries()).map(([indexPathString, data]) => {
     const parentIndexPathString = parseIndexPath(indexPathString.toString()).slice(0, -1).join(".")
 
@@ -137,10 +174,10 @@ export function useIndexedChildren(
   onTreeUpdate?: <UpdatedTree extends any[]>(tree: UpdatedTree) => void
 ) {
   const id = React.useId().slice(1, -1)
-  const serverContext = React.useContext(IndexedTree)
+  const indexedTrees = React.useContext(IndexedTreesContext)
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
   const parentIndexPathString = React.useContext(IndexContext)
-  const indexData = React.useContext(IndexDataContext)
+  const indexedData = React.useContext(IndexedDataContext)
   const indexDataRef = React.useRef<Map<string, any> | null>(null)
   const childrenCount = React.Children.count(children)
   const maxIndexPath = React.useMemo(
@@ -154,35 +191,49 @@ export function useIndexedChildren(
   })
 
   /** Initiate this as the Map for index data if this is a top-level call. */
-  if (indexData === null) {
+  if (indexedData === null) {
     indexDataRef.current = proxyMap()
 
     /** Capture the initial data in render when running on the server. */
-    if (isServer && serverContext) {
-      serverContext.set(id, indexDataRef.current)
+    if (isServer && indexedTrees) {
+      indexedTrees.set(id, indexDataRef.current)
     }
   } else {
-    indexDataRef.current = indexData
+    indexDataRef.current = indexedData
   }
 
+  /** Update the top-level proxy Map of all index trees. */
   useIsomorphicLayoutEffect(() => {
-    if (onTreeUpdateRef.current === undefined) {
+    if (indexedData === null) {
+      indexedTrees.set(id, indexDataRef.current)
+    }
+
+    return () => {
+      if (indexedData === null) {
+        indexedTrees.delete(id)
+      }
+    }
+  }, [id, indexedTrees])
+
+  /** Optionally subscribe to this trees data changes. */
+  useIsomorphicLayoutEffect(() => {
+    if (indexedData === null || onTreeUpdateRef.current === undefined) {
       return
     }
 
-    function buildIndexTree() {
+    function buildIndexedTree() {
       if (indexDataRef.current && onTreeUpdateRef.current) {
-        const tree = buildTree(indexDataRef.current)
+        const tree = buildTreeFromMap(indexDataRef.current)
         onTreeUpdateRef.current(tree)
       }
     }
 
     /** Build initial index tree once children have rendered. */
-    buildIndexTree()
+    buildIndexedTree()
 
-    /** Subscribe to future updates to the tree. */
-    return subscribe(indexDataRef.current!, buildIndexTree)
-  }, [])
+    /** Subscribe to future updates to tree. */
+    return subscribe(indexedData, buildIndexedTree)
+  }, [indexedData])
 
   const childrenToRender = (
     <MaxIndexContext.Provider value={maxIndexPath}>
@@ -205,11 +256,11 @@ export function useIndexedChildren(
     </MaxIndexContext.Provider>
   )
 
-  if (indexData === null) {
+  if (indexedData === null) {
     return (
-      <IndexDataContext.Provider value={indexDataRef.current}>
+      <IndexedDataContext.Provider value={indexDataRef.current}>
         {childrenToRender}
-      </IndexDataContext.Provider>
+      </IndexedDataContext.Provider>
     )
   }
 
