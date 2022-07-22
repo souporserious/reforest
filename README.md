@@ -1,17 +1,17 @@
 # use-indexed-children
 
-Index data for descendant React elements.
+Indexed data across the server and client for descendant React elements.
 
 [Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
 
 ## Install
 
 ```bash
-npm install use-indexed-children
+npm install use-indexed-children valtio
 ```
 
 ```bash
-yarn add use-indexed-children
+yarn add use-indexed-children valtio
 ```
 
 ## Usage
@@ -20,19 +20,14 @@ Please note the following example is for demo purposes only and you should use a
 
 ```tsx
 import * as React from "react"
-import {
-  findDescendant,
-  useIndex,
-  useIndexedChildren,
-} from "use-indexed-children"
+import { findDescendant, useIndex, useIndexedChildren } from "use-indexed-children"
 
 const SelectContext = React.createContext<any>(null)
 
 function Select({ children }: { children: React.ReactNode }) {
   const highlightedIndexState = React.useState<number | null>(null)
   const [highlightedIndex, setHighlightedIndex] = highlightedIndexState
-  const [selectedValue, setSelectedValue] =
-    React.useState<React.ReactElement | null>(null)
+  const [selectedValue, setSelectedValue] = React.useState<React.ReactElement | null>(null)
   const indexedChildren = useIndexedChildren(children)
   const maxIndex = indexedChildren.length
   const moveHighlightedIndex = (amountToMove: number) => {
@@ -67,45 +62,25 @@ function Select({ children }: { children: React.ReactNode }) {
           moveHighlightedIndex(-1)
         } else if (event.key === "ArrowDown") {
           moveHighlightedIndex(1)
-        } else if (
-          event.key === "Enter" &&
-          typeof highlightedIndex === "number"
-        ) {
+        } else if (event.key === "Enter" && typeof highlightedIndex === "number") {
           selectIndex(highlightedIndex.toString())
         }
       }}
     >
-      <strong>
-        {selectedValue ? (
-          <>Selected: {selectedValue}</>
-        ) : (
-          `Select an option below`
-        )}
-      </strong>
-      <SelectContext.Provider
-        value={{ highlightedIndexState, selectIndex, selectedValue }}
-      >
+      <strong>{selectedValue ? <>Selected: {selectedValue}</> : `Select an option below`}</strong>
+      <SelectContext.Provider value={{ highlightedIndexState, selectIndex, selectedValue }}>
         {indexedChildren}
       </SelectContext.Provider>
     </div>
   )
 }
 
-function Option({
-  children,
-  value,
-}: {
-  children: React.ReactNode
-  value: any
-}) {
+function Option({ children, value }: { children: React.ReactNode; value: any }) {
   const { indexPath, index } = useIndex()
   const selectContext = React.useContext(SelectContext)
-  const [highlightedIndex, setHighlightedIndex] =
-    selectContext.highlightedIndexState
+  const [highlightedIndex, setHighlightedIndex] = selectContext.highlightedIndexState
   const isHighlighted = index === highlightedIndex
-  const isSelected = selectContext.selectedValue
-    ? selectContext.selectedValue === value
-    : false
+  const isSelected = selectContext.selectedValue ? selectContext.selectedValue === value : false
 
   return (
     <div
