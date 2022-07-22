@@ -48,6 +48,44 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
           "value": "pears",
         },
       ],
+      Map {
+        "0.1" => Object {
+          "value": "fuji",
+        },
+        "0.2" => Object {
+          "value": "gala",
+        },
+        "0.3" => Object {
+          "value": "honeycrisp",
+        },
+        "0" => Object {
+          "value": "apples",
+        },
+        "1.1" => Object {
+          "value": "mandarin",
+        },
+        "1.2" => Object {
+          "value": "naval",
+        },
+        "1.3" => Object {
+          "value": "tangerine",
+        },
+        "1" => Object {
+          "value": "apples",
+        },
+        "2.1" => Object {
+          "value": "anjou",
+        },
+        "2.2" => Object {
+          "value": "asian",
+        },
+        "2.3" => Object {
+          "value": "bosc",
+        },
+        "2" => Object {
+          "value": "pears",
+        },
+      },
     ],
   ],
   "results": Array [
