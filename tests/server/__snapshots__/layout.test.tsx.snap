@@ -1,0 +1,72 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`server-side rendering 1`] = `
+Array [
+  Object {
+    "children": Array [
+      Object {
+        "children": Array [],
+        "columns": undefined,
+        "height": "auto",
+        "id": null,
+        "rows": undefined,
+        "type": "row",
+        "weight": 1,
+        "width": "auto",
+      },
+      Object {
+        "height": "fill",
+        "id": null,
+        "type": "space",
+        "weight": 1,
+        "width": "fill",
+      },
+      Object {
+        "children": undefined,
+        "columns": undefined,
+        "height": "auto",
+        "id": null,
+        "rows": undefined,
+        "type": "column",
+        "weight": 1,
+        "width": "auto",
+      },
+      Object {
+        "height": "fill",
+        "id": null,
+        "type": "space",
+        "weight": 1,
+        "width": "fill",
+      },
+      Object {
+        "height": "fill",
+        "id": null,
+        "type": "node",
+        "weight": 1,
+        "width": "fill",
+      },
+      Object {
+        "height": "fill",
+        "id": null,
+        "type": "space",
+        "weight": 1,
+        "width": "fill",
+      },
+      Object {
+        "height": "fill",
+        "id": null,
+        "type": "space",
+        "weight": 1,
+        "width": "fill",
+      },
+    ],
+    "columns": 12,
+    "height": "auto",
+    "id": null,
+    "rows": 12,
+    "type": "grid",
+    "weight": 1,
+    "width": "auto",
+  },
+]
+`;

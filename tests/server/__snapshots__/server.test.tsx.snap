@@ -2,16 +2,18 @@
 
 exports[`server-side rendering 1`] = `
 Array [
-  Array [
-    Object {
-      "value": "apple",
-    },
-    Object {
-      "value": "orange",
-    },
-    Object {
-      "value": "banana",
-    },
-  ],
+  Object {
+    "children": Array [
+      Object {
+        "value": "apple",
+      },
+      Object {
+        "value": "orange",
+      },
+      Object {
+        "value": "banana",
+      },
+    ],
+  },
 ]
 `;

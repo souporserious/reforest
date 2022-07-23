@@ -49,7 +49,7 @@ test("renders a complex list of items with the correct indexes", () => {
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const indexedChildren = useIndexedChildren(children, handleTreeUpdate)
+    const indexedChildren = useIndexedChildren(children, null, handleTreeUpdate)
     return <>{indexedChildren}</>
   }
 
