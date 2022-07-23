@@ -44,7 +44,7 @@ export function createIndexedTreeProvider() {
     getIndexedTrees: () => {
       return Array.from(indexedTrees.values()).map((tree) => ({
         ...tree.data,
-        children: indexMapToTree(Array.from(tree.indexMap.values()) as any),
+        children: indexMapToTree(tree.indexMap),
       }))
     },
   }
