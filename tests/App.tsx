@@ -29,11 +29,7 @@ function Grid({
     () => createGrid({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const indexedChildren = useIndexedChildren(children, node, (tree: Node[]) => {
-    // node.children = tree
-    // const computedLayout = computeLayout(node)
-    // const flattenedLayout = flattenLayout(computedLayout.layout)
-  })
+  const indexedChildren = useIndexedChildren(children)
 
   return <div style={{ width, height }}>{indexedChildren}</div>
 }

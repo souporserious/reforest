@@ -62,13 +62,6 @@ Array [
         "width": "auto",
       },
     ],
-    "columns": 12,
-    "height": "auto",
-    "id": null,
-    "rows": 12,
-    "type": "grid",
-    "weight": 1,
-    "width": "auto",
   },
 ]
 `;

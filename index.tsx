@@ -1,5 +1,6 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
+import { suspend } from "suspend-react"
 import { subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
@@ -32,9 +33,11 @@ export function createIndexedTreeProvider() {
 
   function IndexTreeProvider(props: { children: React.ReactNode }) {
     return (
-      <IndexedTreesContext.Provider value={indexedTrees}>
-        {props.children}
-      </IndexedTreesContext.Provider>
+      <React.Suspense fallback={null}>
+        <IndexedTreesContext.Provider value={indexedTrees}>
+          {props.children}
+        </IndexedTreesContext.Provider>
+      </React.Suspense>
     )
   }
 
@@ -93,11 +96,67 @@ export function useIndexedDataEffect(
  * Returns the index path data based on the closest useIndexedChildren.
  * Optionally attach data that can be retrieved in useIndexedChildren.
  */
-export function useIndex<Data extends Record<string, any>>(data: Data | null = null) {
+export function useIndex<Data extends Record<string, any>>(
+  data: Data | null = null,
+  computeData?: (collectedData: [string, Data][] | null) => any
+) {
+  const indexedData = React.useContext(IndexedDataContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
-  const indexedData = React.useContext(IndexedDataContext)
-  const index = React.useMemo(() => {
+
+  /** Capture the initial data when rendering on the server. */
+  if (isServer && indexedData && indexPathString) {
+    indexedData.set(indexPathString, data)
+  }
+
+  /** Add and delete data in useLayoutEffect on the client. */
+  useIsomorphicLayoutEffect(() => {
+    if (data === null || indexedData === null || indexPathString === null) {
+      return
+    }
+
+    indexedData.set(indexPathString, data)
+
+    return () => {
+      indexedData.delete(indexPathString)
+    }
+  }, [indexedData, data, indexPathString])
+
+  /** Use Suspense on the server to re-render the component before committing the final props. */
+  let serverComputedData: Map<string, Data> | null = null
+
+  if (computeData && isServer) {
+    serverComputedData = suspend(() => {
+      return new Promise(async (resolve) => {
+        /** Wait one tick to allow all components to initially render. */
+        setTimeout(() => {
+          /** Now the collected data is available for computing. */
+          const indexedDataEntries = indexedData ? Array.from(indexedData.entries()) : []
+          const computedData = computeData ? computeData(indexedDataEntries) : indexedDataEntries
+
+          resolve(computedData)
+        })
+      })
+    }, [indexPathString]) as any
+  }
+
+  /** Listen for store changes and compute props before rendering to the screen on client. */
+  const [clientComputedData, setClientComputedData] = React.useState(null)
+
+  useIsomorphicLayoutEffect(() => {
+    if (indexedData === null || computeData === undefined) {
+      return
+    }
+
+    return subscribe(indexedData, () => {
+      const indexedDataEntries = indexedData ? Array.from(indexedData.entries()) : []
+      const computedData = computeData(indexedDataEntries)
+
+      setClientComputedData(computedData)
+    })
+  }, [computeData, indexedData])
+
+  return React.useMemo(() => {
     if (indexPathString === null) {
       return null
     }
@@ -107,6 +166,7 @@ export function useIndex<Data extends Record<string, any>>(data: Data | null = n
     const index = indexPath[indexPath.length - 1]
 
     return {
+      computedData: isServer ? serverComputedData : clientComputedData,
       maxIndex,
       maxIndexPath,
       index,
@@ -117,29 +177,7 @@ export function useIndex<Data extends Record<string, any>>(data: Data | null = n
       isEven: index % 2 === 0,
       isOdd: Math.abs(index % 2) === 1,
     }
-  }, [maxIndexPath, indexPathString])
-
-  useIsomorphicLayoutEffect(() => {
-    if (data === null || indexedData === null || index === null) {
-      return
-    }
-    const { indexPathString } = index
-
-    indexedData.set(indexPathString, data)
-
-    return () => {
-      indexedData.delete(indexPathString)
-    }
-  }, [indexedData, data, index])
-
-  /** Capture the initial data when rendering on the server. */
-  if (isServer && indexedData && index) {
-    const { indexPathString } = index
-
-    indexedData.set(indexPathString, data)
-  }
-
-  return index
+  }, [indexPathString, maxIndexPath, indexedData, serverComputedData, clientComputedData])
 }
 
 type Tree = {
@@ -198,7 +236,7 @@ export function useIndexedChildren<Data extends Record<string, any>>(
   const indexedDataRef = React.useRef<Map<string, any> | null>(null)
   const childrenCount = React.Children.count(children)
   const maxIndexPath = React.useMemo(
-    () => parentMaxIndexPath.concat(childrenCount),
+    () => parentMaxIndexPath.concat(childrenCount - 1),
     [childrenCount]
   )
   const onTreeUpdateRef = React.useRef<typeof onTreeUpdate>(onTreeUpdate)
