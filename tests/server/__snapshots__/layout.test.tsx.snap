@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`server-side rendering 1`] = `
+exports[`server-side tree collection 1`] = `
 Array [
   Object {
     "children": Array [

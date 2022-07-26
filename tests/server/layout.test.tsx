@@ -4,7 +4,7 @@ import * as ReactDOMServer from "react-dom/server"
 import { createIndexedTreeProvider } from "../../index"
 import { App } from "../App"
 
-test("server-side rendering", () => {
+test("server-side tree collection", () => {
   const { IndexTreeProvider, getIndexedTrees } = createIndexedTreeProvider()
 
   ReactDOMServer.renderToString(

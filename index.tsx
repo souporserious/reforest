@@ -96,9 +96,9 @@ export function useIndexedDataEffect(
  * Returns the index path data based on the closest useIndexedChildren.
  * Optionally attach data that can be retrieved in useIndexedChildren.
  */
-export function useIndex<Data extends Record<string, any>>(
+export function useIndex<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
-  computeData?: (collectedData: [string, Data][] | null) => any
+  computeData?: (collectedData: [string, Data][] | null, indexPathString: string) => ComputedData
 ) {
   const indexedData = React.useContext(IndexedDataContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
@@ -123,16 +123,18 @@ export function useIndex<Data extends Record<string, any>>(
   }, [indexedData, data, indexPathString])
 
   /** Use Suspense on the server to re-render the component before committing the final props. */
-  let serverComputedData: Map<string, Data> | null = null
+  let serverComputedData: ComputedData | null = null
 
-  if (computeData && isServer) {
+  if (computeData && indexPathString && isServer) {
     serverComputedData = suspend(() => {
       return new Promise(async (resolve) => {
         /** Wait one tick to allow all components to initially render. */
         setTimeout(() => {
           /** Now the collected data is available for computing. */
           const indexedDataEntries = indexedData ? Array.from(indexedData.entries()) : []
-          const computedData = computeData ? computeData(indexedDataEntries) : indexedDataEntries
+          const computedData = computeData
+            ? computeData(indexedDataEntries, indexPathString)
+            : indexedDataEntries
 
           resolve(computedData)
         })
@@ -141,16 +143,16 @@ export function useIndex<Data extends Record<string, any>>(
   }
 
   /** Listen for store changes and compute props before rendering to the screen on client. */
-  const [clientComputedData, setClientComputedData] = React.useState(null)
+  const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
 
   useIsomorphicLayoutEffect(() => {
-    if (indexedData === null || computeData === undefined) {
+    if (indexedData === null || indexPathString === null || computeData === undefined) {
       return
     }
 
     return subscribe(indexedData, () => {
       const indexedDataEntries = indexedData ? Array.from(indexedData.entries()) : []
-      const computedData = computeData(indexedDataEntries)
+      const computedData = computeData(indexedDataEntries, indexPathString)
 
       setClientComputedData(computedData)
     })
