@@ -1,65 +1,16 @@
 {
   "name": "use-indexed-children",
-  "version": "0.8.1",
-  "description": "Index data for descendant React elements.",
-  "main": "dist/index.js",
-  "module": "dist/esm/index.js",
-  "typings": "dist/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "dist"
-  ],
+  "private": true,
+  "version": "0.0.0",
   "scripts": {
-    "prepublishOnly": "pnpm test && pnpm build",
-    "build": "tsup index.tsx --dts --format esm,cjs --legacy-output",
-    "dev": "pnpm build --watch --sourcemap",
-    "test": "jest",
-    "test:watch": "jest --watch"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/souporserious/use-indexed-children"
-  },
-  "keywords": [
-    "react",
-    "index",
-    "accessibility",
-    "select",
-    "utility",
-    "list"
-  ],
-  "author": "Travis Arnold <travis@souporserious.com> (http://souporserious.com)",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/souporserious/use-indexed-children/issues"
-  },
-  "homepage": "https://github.com/souporserious/use-indexed-children",
-  "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0",
-    "valtio": ">=1.6.0"
-  },
-  "dependencies": {
-    "performant-array-to-tree": "^1.11.0",
-    "suspend-react": "^0.0.8"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test"
   },
   "devDependencies": {
-    "@jsxui/layout": "^0.1.3",
-    "@swc/core": "^1.2.218",
-    "@swc/jest": "^0.2.22",
-    "@testing-library/jest-dom": "^5.16.4",
-    "@testing-library/react": "^13.3.0",
-    "@types/jest": "^28.1.6",
-    "@types/node": "^18.6.1",
-    "@types/react": "^18.0.15",
-    "@types/react-dom": "^18.0.6",
-    "@types/testing-library__jest-dom": "^5.14.5",
-    "jest": "^28.1.3",
-    "jest-environment-jsdom": "^28.1.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tsup": "^6.2.0",
-    "typescript": "^4.7.4",
-    "valtio": "^1.6.3"
+    "turbo": "^1.3.4",
+    "typescript": "^4.7.4"
   }
 }

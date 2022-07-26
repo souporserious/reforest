@@ -1,5 +1,23 @@
-
+# Mac files
 .DS_Store
+
+# NPM
+.npm
 node_modules
-npm-debug.log
+
+# ESLint
+.eslintcache
+
+# NextJS
+.next
+out
+
+# Turborepo
+.turbo
+
+# General
+*.log
+.cache
+.env
+coverage
 dist

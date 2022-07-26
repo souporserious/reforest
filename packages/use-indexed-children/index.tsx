@@ -33,11 +33,9 @@ export function createIndexedTreeProvider() {
 
   function IndexTreeProvider(props: { children: React.ReactNode }) {
     return (
-      <React.Suspense fallback={null}>
-        <IndexedTreesContext.Provider value={indexedTrees}>
-          {props.children}
-        </IndexedTreesContext.Provider>
-      </React.Suspense>
+      <IndexedTreesContext.Provider value={indexedTrees}>
+        <React.Suspense fallback={null}>{props.children}</React.Suspense>
+      </IndexedTreesContext.Provider>
     )
   }
 
@@ -53,9 +51,16 @@ export function createIndexedTreeProvider() {
   }
 }
 
+/** Simple tree type that only types the children attribute. */
+type Tree = {
+  children?: Tree[]
+} & {
+  [key: string]: any
+}
+
 /** Subscribe to any changes to the overall indexed data. */
 export function useIndexedDataEffect(
-  onTreeUpdate: <UpdatedTree extends any[]>(
+  onTreeUpdate: <UpdatedTree extends Tree>(
     trees: UpdatedTree[],
     indexMaps: Map<string, any>
   ) => void
@@ -125,7 +130,7 @@ export function useIndex<Data extends Record<string, any>, ComputedData extends 
   /** Use Suspense on the server to re-render the component before committing the final props. */
   let serverComputedData: ComputedData | null = null
 
-  if (computeData && indexPathString && isServer) {
+  if (computeData && indexPathString) {
     serverComputedData = suspend(() => {
       return new Promise(async (resolve) => {
         /** Wait one tick to allow all components to initially render. */
@@ -182,12 +187,6 @@ export function useIndex<Data extends Record<string, any>, ComputedData extends 
   }, [indexPathString, maxIndexPath, indexedData, serverComputedData, clientComputedData])
 }
 
-type Tree = {
-  children?: Tree[]
-} & {
-  [key: string]: any
-}
-
 /** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
 function cleanTree(tree: Tree | Array<any>) {
   if (Array.isArray(tree)) {
@@ -225,7 +224,7 @@ export function indexMapToTree(indexMap: Map<string, any>) {
 export function useIndexedChildren<Data extends Record<string, any>>(
   children: React.ReactNode,
   data: Data | null = null,
-  onTreeUpdate?: <UpdatedTree extends Data & { children: any[] }>(
+  onTreeUpdate?: <UpdatedTree extends Data & { children: Data[] }>(
     tree: UpdatedTree,
     indexMap: Map<string, any>
   ) => void
