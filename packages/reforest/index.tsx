@@ -1,9 +1,10 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
-import { suspend } from "suspend-react"
+import { preload, suspend } from "suspend-react"
 import { subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
+const DATA_ID = "__REFOREST_DATA__"
 const isServer = typeof window === "undefined"
 const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
@@ -35,6 +36,20 @@ export const TreeMapContext = React.createContext<TreeMapContextValue>(null)
 
 TreeMapContext.displayName = "TreeMapContext"
 
+/** Preload available data when first loading client. */
+if (!isServer) {
+  const serverData = document.getElementById(DATA_ID)?.innerHTML
+
+  if (serverData) {
+    const treeCollection = JSON.parse(serverData)
+    const allTreeValues = Object.values(treeCollection).flatMap((tree: Record<string, any>) =>
+      Object.values(tree)
+    )
+
+    allTreeValues.forEach((data) => preload(async () => data, [data.id]))
+  }
+}
+
 /**
  * Parses a numerical dot-separated string as an index path.
  *
@@ -57,21 +72,26 @@ export function createTreeProvider(initialEntries?: [string, any][]) {
     )
   }
 
+  function stringifyTreeCollection() {
+    let allData = {}
+
+    treeCollection.forEach((tree, treeId) => {
+      allData[treeId] = {}
+
+      tree.treeMap?.forEach((data, key) => {
+        allData[treeId][key] = data
+      })
+    })
+
+    return JSON.stringify(allData)
+  }
+
   return {
     TreeProvider,
     treeCollection,
-    stringifyTreeCollection: () => {
-      let allData = {}
-
-      treeCollection.forEach((tree, treeId) => {
-        allData[treeId] = {}
-
-        tree.treeMap?.forEach((data, key) => {
-          allData[treeId][key] = data
-        })
-      })
-
-      return JSON.stringify(allData)
+    stringifyTreeCollection,
+    getInitializerScript: () => {
+      return `<script id="${DATA_ID}" type="application/json">${stringifyTreeCollection()}</script>`
     },
   }
 }
@@ -149,23 +169,30 @@ export function useTreeEffect(
   }, [treeCollection, tree])
 }
 
+/** Track initial component renders. */
+let globalResolves: any[] = []
+let globalTimeoutId: ReturnType<typeof setTimeout>
+
 /**
  * Returns the index path data based on the closest useIndexedChildren.
  * Optionally attach data that can be retrieved in useIndexedChildren.
  */
 export function useTreeData<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
-  computeData?: (collectedData: [string, Data][] | null, indexPathString: string) => ComputedData
+  computeData?: (collectedData: Map<string, Data> | null, indexPathString: string) => ComputedData
 ) {
   const treeMap = React.useContext(TreeMapContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
   const generatedId = React.useId().slice(1, -1)
   const parsedId = data?.id || generatedId
+  const computeDataRef = React.useRef<typeof computeData>(computeData)
+
+  useIsomorphicLayoutEffect(() => {
+    computeDataRef.current = computeData
+  })
 
   /** Capture the initial data when rendering on the server. */
-  /** TODO: this is where we can set initial data? We should only do this ONCE */
-  /** react strict mode re-renders  */
   if (isServer && treeMap) {
     treeMap.set(generatedId, Object.assign({ indexPathString }, data))
   }
@@ -183,52 +210,24 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
     }
   }, [treeMap, data, generatedId])
 
-  /** Use Suspense on the server to re-render the component before committing the final props. */
-  // let initialComputedData: ComputedData | null = null
+  /** Use Suspense to re-render the component before committing the final props. */
+  const computedData = suspend(() => {
+    return new Promise((resolve) => {
+      /** Keep clearing timeout until the last component renders. */
+      clearTimeout(globalTimeoutId)
 
-  // if (computeData && indexedData && indexPathString) {
-  //   initialComputedData = suspend(() => {
-  //     return new Promise((resolve) => {
-  //       /** Wait one tick to allow all components to initially render. */
-  //       setTimeout(() => {
-  //         /** Now the collected data is available for computing. */
-  //         const indexedDataEntries = indexedData ? Array.from(indexedData.entries()) : []
+      /** Store all of the promises to compute. */
+      globalResolves.push(() =>
+        resolve(computeDataRef.current ? computeDataRef.current(treeMap, generatedId) : treeMap)
+      )
 
-  //         const computedData = computeData
-  //           ? computeData(indexedDataEntries, indexPathString)
-  //           : indexedDataEntries
-
-  //         resolve(computedData)
-  //       })
-  //     })
-  //   }, [indexPathString]) as any
-  // }
-
-  /** Listen for store changes and compute props before rendering to the screen. */
-  // const [computedData, setComputedData] = React.useState<ComputedData | null>(initialComputedData)
-
-  // function computeClientData() {
-  //   if (indexPathString === null || computeData === undefined) {
-  //     return
-  //   }
-
-  //   const indexedDataEntries = indexedData ? Array.from(indexedData.entries()) : []
-  //   const computedData = computeData(indexedDataEntries, indexPathString)
-
-  //   setComputedData((currentComputedData) => {
-  //     return JSON.stringify(computedData) === JSON.stringify(currentComputedData)
-  //       ? currentComputedData
-  //       : computedData
-  //   })
-  // }
-
-  // useIsomorphicLayoutEffect(() => {
-  //   if (indexedData === null || indexPathString === null || computeData === undefined) {
-  //     return
-  //   }
-
-  //   return subscribe(indexedData, computeClientData)
-  // }, [computeData, indexedData])
+      /** Push to the end of the event stack to allow all components to initially render. */
+      globalTimeoutId = setTimeout(() => {
+        globalResolves.forEach((resolve) => resolve())
+        globalResolves = []
+      })
+    })
+  }, [generatedId]) as ComputedData
 
   return React.useMemo(() => {
     if (indexPathString === null) {
@@ -240,9 +239,9 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
     const index = indexPath[indexPath.length - 1]
 
     return {
+      computed: computedData,
       id: parsedId,
       generatedId,
-      // computedData,
       maxIndex,
       maxIndexPath,
       index,
@@ -253,7 +252,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
       isEven: index % 2 === 0,
       isOdd: Math.abs(index % 2) === 1,
     }
-  }, [indexPathString, maxIndexPath, treeMap])
+  }, [indexPathString, maxIndexPath, treeMap, computedData])
 }
 
 /** Provides the current index path for each child. */
@@ -291,7 +290,7 @@ export function useTree<Data extends Record<string, any>>(
 
     /** Hydrate data if available in document head. */
     if (!isServer) {
-      const serverData = document.getElementById("reforest")?.innerHTML
+      const serverData = document.getElementById(DATA_ID)?.innerHTML
 
       if (rootId && serverData) {
         const serverComputedData = JSON.parse(serverData)[rootId]

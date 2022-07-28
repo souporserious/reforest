@@ -28,7 +28,9 @@ function Timeline({
           ]
         })
       })
+
       totalDuration += scene.duration
+
       return keyframes
     })
 
@@ -131,15 +133,15 @@ function Box({
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
 
-  const data = useTreeData(node, (indexedData, localIndexPathString) => {
+  const data = useTreeData(node, (treeMap, generatedId) => {
     const ids = new Set()
     let shouldRender = false
 
-    indexedData?.forEach(([indexPathString, { id }]) => {
-      const isSameIndex = indexPathString === localIndexPathString
+    treeMap.forEach(({ id }, localGeneratedId) => {
+      const isSameId = localGeneratedId === generatedId
       const hasId = ids.has(id)
 
-      if (isSameIndex) {
+      if (isSameId) {
         shouldRender = !hasId
       }
 
@@ -150,16 +152,15 @@ function Box({
 
     return shouldRender
   })
-  // const shouldRender = index!.computedData
+  const shouldRender = data.computed
 
-  // if (!shouldRender) {
-  //   return null
-  // }
+  if (!shouldRender) {
+    return null
+  }
 
   return (
     <div
       id={id}
-      data-count={data.count}
       style={{
         width,
         height,

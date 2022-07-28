@@ -4,7 +4,7 @@ import { createTreeProvider } from "reforest"
 
 class Document extends NextDocument {
   static async getInitialProps(context: DocumentContext) {
-    const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
+    const { TreeProvider, getInitializerScript } = createTreeProvider()
     const originalRenderPage = context.renderPage
 
     context.renderPage = () =>
@@ -19,15 +19,10 @@ class Document extends NextDocument {
 
     const initialProps = await NextDocument.getInitialProps(context)
 
-    initialProps.head.push(
-      <script
-        id="reforest"
-        type="application/json"
-        dangerouslySetInnerHTML={{ __html: stringifyTreeCollection() }}
-      />
-    )
-
-    return initialProps
+    return {
+      ...initialProps,
+      html: initialProps.html.concat(getInitializerScript()),
+    }
   }
 }
 
