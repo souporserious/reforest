@@ -10,7 +10,7 @@ import {
   Node,
 } from "@jsxui/layout"
 
-import { useIndexedChildren, useIndex } from "../index"
+import { useTree, useTreeData } from "../index"
 
 function Grid({
   children,
@@ -29,7 +29,7 @@ function Grid({
     () => createGrid({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const indexedChildren = useIndexedChildren(children)
+  const indexedChildren = useTree(children)
 
   return <div style={{ width, height }}>{indexedChildren}</div>
 }
@@ -52,9 +52,9 @@ function Column({
     [columns, rows, width, height]
   )
 
-  const indexedChildren = useIndexedChildren(children)
+  const indexedChildren = useTree(children)
 
-  useIndex(node)
+  useTreeData(node)
 
   return indexedChildren
 }
@@ -77,9 +77,9 @@ function Row({
     [columns, rows, width, height]
   )
 
-  const indexedChildren = useIndexedChildren(children)
+  const indexedChildren = useTree(children)
 
-  useIndex(node)
+  useTreeData(node)
 
   return indexedChildren
 }
@@ -87,7 +87,7 @@ function Row({
 function Space({ size }: { size?: number }) {
   const node = React.useMemo(() => createSpace({ size }), [size])
 
-  useIndex(node)
+  useTreeData(node)
 
   return null
 }
@@ -103,7 +103,7 @@ function Box({
 }) {
   const node = React.useMemo(() => createNode({ width, height }), [width, height])
 
-  useIndex(node)
+  useTreeData(node)
 
   return <div>{children}</div>
 }

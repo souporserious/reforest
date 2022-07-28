@@ -1,6 +1,6 @@
 {
-  "name": "use-indexed-children",
-  "version": "0.8.1",
+  "name": "reforest",
+  "version": "0.0.0",
   "description": "Index data for descendant React elements.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "prepublishOnly": "pnpm test && pnpm build",
+    "prepublishOnly": "pnpm build",
     "build": "tsup index.tsx --dts --format esm,cjs --legacy-output",
     "dev": "pnpm build --watch --sourcemap",
     "test": "jest",
@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/souporserious/use-indexed-children"
+    "url": "https://github.com/souporserious/reforest"
   },
   "keywords": [
     "react",
@@ -31,9 +31,9 @@
   "author": "Travis Arnold <travis@souporserious.com> (http://souporserious.com)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/souporserious/use-indexed-children/issues"
+    "url": "https://github.com/souporserious/reforest/issues"
   },
-  "homepage": "https://github.com/souporserious/use-indexed-children",
+  "homepage": "https://github.com/souporserious/reforest",
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",

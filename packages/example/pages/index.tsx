@@ -1,11 +1,11 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useIndexedChildren, useIndex } from "use-indexed-children"
+import { useTree, useTreeData } from "reforest"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
 function Timeline({
-  children,
+  children: childrenProp,
   scroll: scrollProp,
 }: {
   children: React.ReactNode
@@ -35,10 +35,10 @@ function Timeline({
       return keyframes
     })
 
-    console.log(sceneKeyframes)
+    // console.log(sceneKeyframes)
   }, [])
 
-  const indexedChildren = useIndexedChildren(children, null, handleTreeUpdate as any)
+  const tree = useTree(childrenProp, null, handleTreeUpdate as any)
   const styles = {
     display: "grid",
     width: "100%",
@@ -48,20 +48,26 @@ function Timeline({
   return (
     <main style={styles}>
       <TimelineContext.Provider value={{ scroll: scrollProp }}>
-        {indexedChildren}
+        {tree.children}
       </TimelineContext.Provider>
     </main>
   )
 }
 
-function Scene({ children, duration = 1 }: { children: React.ReactNode; duration?: number }) {
+function Scene({
+  children: childrenProp,
+  duration = 1,
+}: {
+  children: React.ReactNode
+  duration?: number
+}) {
   const timelineContextValue = React.useContext(TimelineContext)
   const id = React.useId().slice(1, -1)
   const node = React.useMemo(() => ({ id, duration }), [id, duration])
 
-  useIndex(node)
+  useTreeData(node)
 
-  const indexedChildren = useIndexedChildren(children)
+  const tree = useTree(childrenProp)
 
   if (timelineContextValue?.scroll) {
     return (
@@ -75,7 +81,7 @@ function Scene({ children, duration = 1 }: { children: React.ReactNode; duration
             top: 0,
           }}
         >
-          {indexedChildren}
+          {tree.children}
         </div>
       </section>
     )
@@ -91,7 +97,7 @@ function Scene({ children, duration = 1 }: { children: React.ReactNode; duration
         height: "100vh",
       }}
     >
-      {indexedChildren}
+      {tree.children}
     </section>
   )
 }
@@ -128,7 +134,7 @@ function Box({
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
 
-  const index = useIndex(node, (indexedData, localIndexPathString) => {
+  const index = useTreeData(node, (indexedData, localIndexPathString) => {
     const ids = new Set()
     let shouldRender = false
 
@@ -147,11 +153,11 @@ function Box({
 
     return shouldRender
   })
-  const shouldRender = index!.computedData
+  // const shouldRender = index!.computedData
 
-  if (!shouldRender) {
-    return null
-  }
+  // if (!shouldRender) {
+  //   return null
+  // }
 
   return (
     <div

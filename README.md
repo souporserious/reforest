@@ -1,17 +1,20 @@
-# use-indexed-children
+# 🌲 reforest
 
-Indexed data across the server and client for descendant React elements.
+React hooks to coordinate indexed data across the server and client.
 
 [Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
+
+> **Note**
+> While digital trees are cool, climate change is affecting real trees at a rapid rate. Please consider planting a tree, starting a garden, or donating to an [organization](https://onetreeplanted.org/).
 
 ## Install
 
 ```bash
-npm install use-indexed-children valtio
+npm install reforest valtio
 ```
 
 ```bash
-yarn add use-indexed-children valtio
+yarn add reforest valtio
 ```
 
 ## Usage
@@ -20,7 +23,7 @@ Please note the following example is for demo purposes only and you should use a
 
 ```tsx
 import * as React from "react"
-import { findDescendant, useIndex, useIndexedChildren } from "use-indexed-children"
+import { useTree, useTreeData } from "reforest"
 
 const SelectContext = React.createContext<any>(null)
 
@@ -28,8 +31,7 @@ function Select({ children }: { children: React.ReactNode }) {
   const highlightedIndexState = React.useState<number | null>(null)
   const [highlightedIndex, setHighlightedIndex] = highlightedIndexState
   const [selectedValue, setSelectedValue] = React.useState<React.ReactElement | null>(null)
-  const indexedChildren = useIndexedChildren(children)
-  const maxIndex = indexedChildren.length
+  const tree = useTree(children)
   const moveHighlightedIndex = (amountToMove: number) => {
     setHighlightedIndex((currentIndex) => {
       if (currentIndex === null) {
@@ -37,7 +39,7 @@ function Select({ children }: { children: React.ReactNode }) {
       } else {
         const nextIndex = currentIndex + amountToMove
 
-        if (nextIndex >= maxIndex) {
+        if (nextIndex >= tree.maxIndex) {
           return 0
         } else if (nextIndex < 0) {
           return maxIndex - 1
@@ -46,12 +48,6 @@ function Select({ children }: { children: React.ReactNode }) {
         return currentIndex + amountToMove
       }
     })
-  }
-  const selectIndex = (index: string) => {
-    const descendant = findDescendant(children, index)
-    if (descendant) {
-      setSelectedValue(descendant.props.value)
-    }
   }
 
   return (
@@ -62,13 +58,11 @@ function Select({ children }: { children: React.ReactNode }) {
           moveHighlightedIndex(-1)
         } else if (event.key === "ArrowDown") {
           moveHighlightedIndex(1)
-        } else if (event.key === "Enter" && typeof highlightedIndex === "number") {
-          selectIndex(highlightedIndex.toString())
         }
       }}
     >
       <strong>{selectedValue ? <>Selected: {selectedValue}</> : `Select an option below`}</strong>
-      <SelectContext.Provider value={{ highlightedIndexState, selectIndex, selectedValue }}>
+      <SelectContext.Provider value={{ highlightedIndexState, selectedValue }}>
         {indexedChildren}
       </SelectContext.Provider>
     </div>
@@ -76,7 +70,7 @@ function Select({ children }: { children: React.ReactNode }) {
 }
 
 function Option({ children, value }: { children: React.ReactNode; value: any }) {
-  const { indexPath, index } = useIndex()
+  const { indexPath, index } = useTreeData()
   const selectContext = React.useContext(SelectContext)
   const [highlightedIndex, setHighlightedIndex] = selectContext.highlightedIndexState
   const isHighlighted = index === highlightedIndex

@@ -1,5 +1,5 @@
 import withTM from "next-transpile-modules"
 
-export default withTM(["use-indexed-children"])({
+export default withTM(["reforest"])({
   reactStrictMode: true,
 })
