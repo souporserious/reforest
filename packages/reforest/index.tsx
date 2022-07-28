@@ -1,6 +1,6 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
-import { preload, suspend } from "suspend-react"
+import { clear, preload, suspend } from "suspend-react"
 import { subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
@@ -207,6 +207,9 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     return () => {
       treeMap.delete(generatedId)
+
+      /** Clear suspend-react cache when ids change. */
+      clear([generatedId])
     }
   }, [treeMap, data, generatedId])
 
