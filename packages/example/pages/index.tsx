@@ -11,17 +11,16 @@ function Timeline({
   children: React.ReactNode
   scroll?: boolean
 }) {
-  const handleTreeUpdate = React.useCallback(({ children: scenes }) => {
+  const handleTreeUpdate = React.useCallback((tree, treeMap) => {
     let totalDuration = 0
 
-    const sceneKeyframes = scenes.flatMap((scene) => {
+    const sceneKeyframes = tree.children.flatMap((scene) => {
       const sequences = flat(scene.children, {
         getChildren: (node) => node?.children || [],
       })
       const keyframes = sequences.flatMap((keyframes) => {
         return keyframes.map((keyframe) => {
           const { id, delay, width, height, scale, backgroundColor, opacity } = keyframe
-
           return [
             `#${id}`,
             { width, height, scale, opacity, backgroundColor },
@@ -29,13 +28,11 @@ function Timeline({
           ]
         })
       })
-
       totalDuration += scene.duration
-
       return keyframes
     })
 
-    // console.log(sceneKeyframes)
+    console.log(sceneKeyframes)
   }, [])
 
   const tree = useTree(childrenProp, null, handleTreeUpdate as any)
@@ -134,7 +131,7 @@ function Box({
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
 
-  const index = useTreeData(node, (indexedData, localIndexPathString) => {
+  const data = useTreeData(node, (indexedData, localIndexPathString) => {
     const ids = new Set()
     let shouldRender = false
 
@@ -162,6 +159,7 @@ function Box({
   return (
     <div
       id={id}
+      data-count={data.count}
       style={{
         width,
         height,

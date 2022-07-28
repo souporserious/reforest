@@ -7,9 +7,9 @@ import { proxyMap } from "valtio/utils"
 const isServer = typeof window === "undefined"
 const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
-type IndexMap = Map<string, any>
+type TreeMap = Map<string, any>
 
-type RootTree = { data: any; indexMap: IndexMap | null }
+type RootTree = { data: any; treeMap: TreeMap | null }
 
 type Tree = { children?: Tree[] } & { [key: string]: any }
 
@@ -46,13 +46,13 @@ export function parseIndexPath(indexPathString: string) {
 }
 
 /** Wraps a tree with a Map for gathering indexed data on the server. */
-export function createTreeProvider() {
-  const treeCollection = proxyMap<string, RootTree>()
+export function createTreeProvider(initialEntries?: [string, any][]) {
+  const treeCollection = proxyMap<string, RootTree>(initialEntries)
 
   function TreeProvider(props: { children: React.ReactNode }) {
     return (
       <TreeCollectionContext.Provider value={treeCollection}>
-        <React.Suspense fallback={null}>{props.children}</React.Suspense>
+        {props.children}
       </TreeCollectionContext.Provider>
     )
   }
@@ -60,13 +60,13 @@ export function createTreeProvider() {
   return {
     TreeProvider,
     treeCollection,
-    getTreeCollection: () => {
+    stringifyTreeCollection: () => {
       let allData = {}
 
       treeCollection.forEach((tree, treeId) => {
         allData[treeId] = {}
 
-        tree.indexMap?.forEach((data, key) => {
+        tree.treeMap?.forEach((data, key) => {
           allData[treeId][key] = data
         })
       })
@@ -79,6 +79,9 @@ export function createTreeProvider() {
 /** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
 function cleanTree(tree: any) {
   if (tree.children && tree.children?.length > 0) {
+    /** Sort children by the index path. */
+    tree.children.sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+
     return {
       ...tree.data,
       generatedId: tree.generatedId,
@@ -92,9 +95,7 @@ function cleanTree(tree: any) {
 /** Builds a tree from a Map of data collected in useTreeChildren. */
 export function mapToTree(dataMap: Map<string, any>) {
   const parsedValues = Array.from(dataMap.entries()).map(([generatedId, data]) => {
-    const parentIndexPathString = parseIndexPath(data.indexPathString.toString())
-      .slice(0, -1)
-      .join(".")
+    const parentIndexPathString = parseIndexPath(data.indexPathString).slice(0, -1).join(".")
 
     return {
       data,
@@ -128,7 +129,7 @@ export function useTreeEffect(
     function buildIndexedTree() {
       const trees = Array.from(treeCollection.values()).map((tree) => ({
         ...tree.data,
-        children: tree.indexMap ? mapToTree(tree.indexMap) : [],
+        ...(tree.treeMap ? mapToTree(tree.treeMap) : { children: [] }),
       }))
 
       onTreeUpdateRef.current(trees, new Map(treeCollection))
@@ -166,7 +167,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   /** TODO: this is where we can set initial data? We should only do this ONCE */
   /** react strict mode re-renders  */
   if (isServer && treeMap) {
-    treeMap.set(generatedId, data)
+    treeMap.set(generatedId, Object.assign({ indexPathString }, data))
   }
 
   /** Add and delete data in useLayoutEffect on the client. */
@@ -175,7 +176,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
       return
     }
 
-    treeMap.set(generatedId, data)
+    treeMap.set(generatedId, Object.assign({ indexPathString }, data))
 
     return () => {
       treeMap.delete(generatedId)
@@ -270,7 +271,7 @@ export function useTree<Data extends Record<string, any>>(
   const treeMap = React.useContext(TreeMapContext)
   const treeMapRef = React.useRef<TreeMapContextValue>(null)
   const parentRootId = React.useContext(RootIdContext)
-  const generatedRootId = React.useId()
+  const generatedRootId = React.useId().slice(1, -1)
   const rootId = parentRootId || generatedRootId
   const isRoot = treeMap === null
   const childrenCount = React.Children.count(children)
@@ -289,17 +290,17 @@ export function useTree<Data extends Record<string, any>>(
     let initialEntries: [string, any][] = []
 
     /** Hydrate data if available in document head. */
-    // if (!isServer) {
-    //   const serverData = document.getElementById("reforest")?.innerHTML
+    if (!isServer) {
+      const serverData = document.getElementById("reforest")?.innerHTML
 
-    //   if (rootId && serverData) {
-    //     const serverComputedData = JSON.parse(serverData)[rootId]
+      if (rootId && serverData) {
+        const serverComputedData = JSON.parse(serverData)[rootId]
 
-    //     if (serverComputedData) {
-    //       initialEntries = Object.entries(serverComputedData)
-    //     }
-    //   }
-    // }
+        if (serverComputedData) {
+          initialEntries = Object.entries(serverComputedData)
+        }
+      }
+    }
 
     treeMapRef.current = proxyMap(initialEntries)
 
@@ -307,7 +308,7 @@ export function useTree<Data extends Record<string, any>>(
     if (treeCollection) {
       treeCollection.set(rootId, {
         data,
-        indexMap: treeMapRef.current,
+        treeMap: treeMapRef.current,
       })
     }
   } else {
@@ -319,7 +320,7 @@ export function useTree<Data extends Record<string, any>>(
     if (isRoot) {
       treeCollection.set(rootId, {
         data,
-        indexMap: treeMapRef.current,
+        treeMap: treeMapRef.current,
       })
     }
 
@@ -340,7 +341,7 @@ export function useTree<Data extends Record<string, any>>(
       if (treeMapRef.current && onUpdateRef.current) {
         const tree = {
           ...(data || {}),
-          children: mapToTree(treeMapRef.current),
+          ...mapToTree(treeMapRef.current),
         } as Data & { children: any[] }
 
         onUpdateRef.current(tree, new Map(treeMapRef.current))
@@ -379,15 +380,18 @@ export function useTree<Data extends Record<string, any>>(
 
   if (isRoot) {
     childrenToRender = (
-      <RootIdContext.Provider value={rootId}>
-        <TreeMapContext.Provider value={treeMapRef.current}>
-          {childrenToRender}
-        </TreeMapContext.Provider>
-      </RootIdContext.Provider>
+      <React.Suspense fallback={null}>
+        <RootIdContext.Provider value={rootId}>
+          <TreeMapContext.Provider value={treeMapRef.current}>
+            {childrenToRender}
+          </TreeMapContext.Provider>
+        </RootIdContext.Provider>
+      </React.Suspense>
     )
   }
 
   return {
     children: childrenToRender,
+    treeMap: new Map(treeMapRef.current),
   }
 }

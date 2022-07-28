@@ -1,6 +1,6 @@
 # 🌲 reforest
 
-React hooks to coordinate indexed data across the server and client.
+Collect and replant React props across the server and client.
 
 [Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
 
