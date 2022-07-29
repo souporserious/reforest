@@ -1,6 +1,6 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
-import { clear, preload, suspend } from "suspend-react"
+import { preload, suspend } from "suspend-react"
 import { subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
@@ -37,16 +37,21 @@ export const TreeMapContext = React.createContext<TreeMapContextValue>(null)
 TreeMapContext.displayName = "TreeMapContext"
 
 /** Preload available data when first loading client. */
+let initialTreeCollectionIds: string[] | null = null
+
 if (!isServer) {
   const serverData = document.getElementById(DATA_ID)?.innerHTML
 
   if (serverData) {
     const treeCollection = JSON.parse(serverData)
-    const allTreeValues = Object.values(treeCollection).flatMap((tree: Record<string, any>) =>
-      Object.values(tree)
+
+    const initialTreeCollectionEntries = Object.values(treeCollection).flatMap(
+      (tree: Record<string, any>) => Object.entries(tree)
     )
 
-    allTreeValues.forEach((data) => preload(async () => data, [data.id]))
+    initialTreeCollectionIds = initialTreeCollectionEntries.map(([id]) => id)
+
+    initialTreeCollectionEntries.forEach(([, data]) => preload(async () => data, [data.id]))
   }
 }
 
@@ -207,30 +212,56 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     return () => {
       treeMap.delete(generatedId)
-
-      /** Clear suspend-react cache when ids change. */
-      clear([generatedId])
     }
   }, [treeMap, data, generatedId])
 
   /** Use Suspense to re-render the component before committing the final props. */
-  const computedData = suspend(() => {
-    return new Promise((resolve) => {
-      /** Keep clearing timeout until the last component renders. */
-      clearTimeout(globalTimeoutId)
+  const serverComputedData = suspend(
+    () => {
+      return new Promise((resolve) => {
+        /** Keep clearing timeout until the last component renders. */
+        clearTimeout(globalTimeoutId)
 
-      /** Store all of the promises to compute. */
-      globalResolves.push(() =>
-        resolve(computeDataRef.current ? computeDataRef.current(treeMap, generatedId) : treeMap)
-      )
+        /** Store all of the promises to compute. */
+        globalResolves.push(() =>
+          resolve(computeDataRef.current ? computeDataRef.current(treeMap, generatedId) : treeMap)
+        )
 
-      /** Push to the end of the event stack to allow all components to initially render. */
-      globalTimeoutId = setTimeout(() => {
-        globalResolves.forEach((resolve) => resolve())
-        globalResolves = []
+        /** Push to the end of the event stack to allow all components to initially render. */
+        globalTimeoutId = setTimeout(() => {
+          globalResolves.forEach((resolve) => resolve())
+          globalResolves = []
+        })
       })
+    },
+    [generatedId],
+    {
+      /** Hack the equality function to only run once on the client and not forever infinite loop since React.useId changes. */
+      equal(a, b) {
+        const aIndex = initialTreeCollectionIds?.indexOf(a)
+        const bIndex = initialTreeCollectionIds?.indexOf(b)
+
+        return a === b || aIndex === -1 || bIndex === -1
+      },
+    }
+  ) as ComputedData
+
+  /** Listen for store changes and compute props before rendering to the screen on client. */
+  const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
+
+  useIsomorphicLayoutEffect(() => {
+    if (treeMap === null || indexPathString === null || computeData === undefined) {
+      return
+    }
+
+    return subscribe(treeMap, () => {
+      const computedData = computeData(treeMap ? new Map(treeMap) : null, indexPathString)
+
+      setClientComputedData(computedData)
     })
-  }, [generatedId]) as ComputedData
+  }, [computeData, treeMap])
+
+  const computedData = clientComputedData || serverComputedData
 
   return React.useMemo(() => {
     if (indexPathString === null) {
