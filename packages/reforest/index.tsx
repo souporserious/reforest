@@ -215,36 +215,41 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
     }
   }, [treeMap, data, generatedId])
 
-  /** Use Suspense to re-render the component before committing the final props. */
-  const serverComputedData = suspend(
-    () => {
-      return new Promise((resolve) => {
-        /** Keep clearing timeout until the last component renders. */
-        clearTimeout(globalTimeoutId)
+  /** Use Suspense to re-render the component before committing the final props on the server and hydration **only**. */
+  const isClientWithInitialData = !isServer && initialTreeCollectionIds !== null
+  let serverComputedData: ComputedData | null = null
 
-        /** Store all of the promises to compute. */
-        globalResolves.push(() =>
-          resolve(computeDataRef.current ? computeDataRef.current(treeMap, generatedId) : treeMap)
-        )
+  if (isServer || isClientWithInitialData) {
+    serverComputedData = suspend(
+      () => {
+        return new Promise((resolve) => {
+          /** Keep clearing timeout until the last component renders. */
+          clearTimeout(globalTimeoutId)
 
-        /** Push to the end of the event stack to allow all components to initially render. */
-        globalTimeoutId = setTimeout(() => {
-          globalResolves.forEach((resolve) => resolve())
-          globalResolves = []
+          /** Store all of the promises to compute. */
+          globalResolves.push(() =>
+            resolve(computeDataRef.current ? computeDataRef.current(treeMap, generatedId) : treeMap)
+          )
+
+          /** Push to the end of the event stack to allow all components to initially render. */
+          globalTimeoutId = setTimeout(() => {
+            globalResolves.forEach((resolve) => resolve())
+            globalResolves = []
+          })
         })
-      })
-    },
-    [generatedId],
-    {
-      /** Hack the equality function to only run once on the client and not forever infinite loop since React.useId changes. */
-      equal(a, b) {
-        const aIndex = initialTreeCollectionIds?.indexOf(a)
-        const bIndex = initialTreeCollectionIds?.indexOf(b)
-
-        return a === b || aIndex === -1 || bIndex === -1
       },
-    }
-  ) as ComputedData
+      [generatedId],
+      {
+        /** Hack the equality function to only run once on the client and not forever infinite loop since React.useId changes. */
+        equal(a, b) {
+          const aIndex = initialTreeCollectionIds?.indexOf(a)
+          const bIndex = initialTreeCollectionIds?.indexOf(b)
+
+          return a === b || aIndex === -1 || bIndex === -1
+        },
+      }
+    ) as ComputedData
+  }
 
   /** Listen for store changes and compute props before rendering to the screen on client. */
   const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
