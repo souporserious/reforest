@@ -163,10 +163,13 @@ export function mapToTree(dataMap: Map<string, any>) {
   return cleanedTree
 }
 
-/** Subscribe to all tree updates. The first [treeMap] value must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
+/** Subscribe to all tree updates. */
 export function useTreeEffect(
+  /** A tree map to subscribe to. Must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
   treeMap: Map<string, any>,
-  onTreeUpdate: <UpdatedTree extends Tree>(trees: UpdatedTree[]) => void
+
+  /** Updates when any tree data is changed and returns a nested tree array. */
+  onTreeUpdate: (tree: ReturnType<typeof mapToTree>) => void
 ) {
   const onTreeUpdateRef = React.useRef<typeof onTreeUpdate>(onTreeUpdate)
 
