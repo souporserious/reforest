@@ -17,6 +17,10 @@ npm install reforest valtio
 yarn add reforest valtio
 ```
 
+## Why?
+
+When building low-level components in React for accessibility, styling, and animation purposes, the orchestration for everything can become painful for both the library author and the library consumer. In general, the problem boils down to a component needing to use render data from another component[s]. This library aims to solve this problem by managing a tree of data built from other component renders in an easy API that works on the server and client.
+
 ## Usage
 
 Please note the following example is for demo purposes only and you should use a more robust solution that is fully accessible.
