@@ -184,11 +184,13 @@ export default function App() {
       </div>
       <Timeline scroll={scroll}>
         <Scene duration={2}>
-          <Box id="box-1" width="80vw" height="60vh" backgroundColor="green" />
+          <Box id="box-1" width="80vw" height="60vh" backgroundColor="blue" />
         </Scene>
         <Scene duration={3}>
           <Box id="box-1" width="70vw" height="50vh" backgroundColor="darkblue" />
-          <Box id="box-2" width="60vw" height="40vh" backgroundColor="blue" opacity={[0, 1]} />
+          {scroll ? (
+            <Box id="box-2" width="60vw" height="40vh" backgroundColor="blue" opacity={[0, 1]} />
+          ) : null}
         </Scene>
         <Scene duration={1.5}>
           <Box id="box-1" width="60vw" height="80vh" backgroundColor="orange" />

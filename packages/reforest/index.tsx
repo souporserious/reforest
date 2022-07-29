@@ -65,6 +65,21 @@ export function parseIndexPath(indexPathString: string) {
   return indexPathString.split(".").map((index) => parseInt(index, 10))
 }
 
+/** Stringifys a tree map. */
+export function stringifyTreeCollection(treeCollection: Map<string, any>) {
+  let allData = {}
+
+  treeCollection.forEach((tree, treeId) => {
+    allData[treeId] = {}
+
+    tree.treeMap?.forEach((data, key) => {
+      allData[treeId][key] = data
+    })
+  })
+
+  return JSON.stringify(allData)
+}
+
 /** Wraps a tree with a Map for gathering indexed data on the server. */
 export function createTreeProvider(initialEntries?: [string, any][]) {
   const treeCollection = proxyMap<string, RootTree>(initialEntries)
@@ -77,28 +92,41 @@ export function createTreeProvider(initialEntries?: [string, any][]) {
     )
   }
 
-  function stringifyTreeCollection() {
-    let allData = {}
-
-    treeCollection.forEach((tree, treeId) => {
-      allData[treeId] = {}
-
-      tree.treeMap?.forEach((data, key) => {
-        allData[treeId][key] = data
-      })
-    })
-
-    return JSON.stringify(allData)
-  }
-
   return {
     TreeProvider,
     treeCollection,
-    stringifyTreeCollection,
-    getInitializerScript: () => {
-      return `<script id="${DATA_ID}" type="application/json">${stringifyTreeCollection()}</script>`
-    },
+    stringifyTreeCollection: () => stringifyTreeCollection(treeCollection),
+    getInitializerScript: () =>
+      `<script id="${DATA_ID}" type="application/json">${stringifyTreeCollection(
+        treeCollection
+      )}</script>`,
   }
+}
+
+/** Provides a tree collection for subscribing to all tree data on the client, see [createTreeProvider] for rendering on the server. */
+export function TreeProvider({
+  children,
+  initialEntries,
+}: {
+  children: React.ReactNode
+  initialEntries?: [string, any][]
+}) {
+  const treeCollection = React.useContext(TreeCollectionContext)
+  const treeCollectionContextValue = React.useRef<Map<string, RootTree> | null>(null)
+
+  if (treeCollectionContextValue.current === null) {
+    if (initialEntries) {
+      treeCollectionContextValue.current = proxyMap<string, RootTree>(initialEntries)
+    } else {
+      treeCollectionContextValue.current = treeCollection
+    }
+  }
+
+  return (
+    <TreeCollectionContext.Provider value={treeCollectionContextValue.current}>
+      {children}
+    </TreeCollectionContext.Provider>
+  )
 }
 
 /** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
@@ -117,7 +145,7 @@ function cleanTree(tree: any) {
   return tree.data
 }
 
-/** Builds a tree from a Map of data collected in useTreeChildren. */
+/** Builds a tree from a Map of data collected in useTree. */
 export function mapToTree(dataMap: Map<string, any>) {
   const parsedValues = Array.from(dataMap.entries()).map(([generatedId, data]) => {
     const parentIndexPathString = parseIndexPath(data.indexPathString).slice(0, -1).join(".")
@@ -135,15 +163,11 @@ export function mapToTree(dataMap: Map<string, any>) {
   return cleanedTree
 }
 
-/** Subscribe to all tree updates. */
+/** Subscribe to all tree updates. The first [treeMap] value must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
 export function useTreeEffect(
-  onTreeUpdate: <UpdatedTree extends Tree>(
-    trees: UpdatedTree[],
-    treeCollection: Map<string, any>
-  ) => void
+  treeMap: Map<string, any>,
+  onTreeUpdate: <UpdatedTree extends Tree>(trees: UpdatedTree[]) => void
 ) {
-  const treeCollection = React.useContext(TreeCollectionContext)
-  const tree = React.useContext(TreeMapContext)
   const onTreeUpdateRef = React.useRef<typeof onTreeUpdate>(onTreeUpdate)
 
   useIsomorphicLayoutEffect(() => {
@@ -151,27 +175,16 @@ export function useTreeEffect(
   })
 
   useIsomorphicLayoutEffect(() => {
-    function buildIndexedTree() {
-      const trees = Array.from(treeCollection.values()).map((tree) => ({
-        ...tree.data,
-        ...(tree.treeMap ? mapToTree(tree.treeMap) : { children: [] }),
-      }))
-
-      onTreeUpdateRef.current(trees, new Map(treeCollection))
+    function handleTreeUpdate() {
+      onTreeUpdateRef.current(mapToTree(treeMap))
     }
 
-    /** Build initial index tree once children have rendered. */
-    buildIndexedTree()
+    /** Build initial tree once children have rendered. */
+    handleTreeUpdate()
 
-    /** Subscribe to future updates to indexed trees. */
-    const treeCollectionCleanup = subscribe(treeCollection, buildIndexedTree)
-    const treeCleanup = tree ? subscribe(tree, buildIndexedTree) : null
-
-    return () => {
-      treeCollectionCleanup()
-      treeCleanup?.()
-    }
-  }, [treeCollection, tree])
+    /** Subscribe to future updates to tree. */
+    return subscribe(treeMap, handleTreeUpdate)
+  }, [treeMap])
 }
 
 /** Track initial component renders. */
@@ -179,8 +192,8 @@ let globalResolves: any[] = []
 let globalTimeoutId: ReturnType<typeof setTimeout>
 
 /**
- * Returns the index path data based on the closest useIndexedChildren.
- * Optionally attach data that can be retrieved in useIndexedChildren.
+ * Returns the current index and optional computed data based on the closest useTree.
+ * Attached data can be retrieved in useTree or useTreeEffect.
  */
 export function useTreeData<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
@@ -259,11 +272,21 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
       return
     }
 
-    return subscribe(treeMap, () => {
-      const computedData = computeData(treeMap ? new Map(treeMap) : null, indexPathString)
+    function computeClientData() {
+      setClientComputedData((currentComputedData) => {
+        const computedData = computeData!(treeMap ? new Map(treeMap) : null, indexPathString!)
 
-      setClientComputedData(computedData)
-    })
+        if (JSON.stringify(currentComputedData) === JSON.stringify(computedData)) {
+          return currentComputedData
+        }
+
+        return computedData
+      })
+    }
+
+    computeClientData()
+
+    return subscribe(treeMap, computeClientData)
   }, [computeData, treeMap])
 
   const computedData = clientComputedData || serverComputedData
@@ -294,7 +317,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   }, [indexPathString, maxIndexPath, treeMap, computedData])
 }
 
-/** Provides the current index path for each child. */
+/** Provide indexes and subscribe to descendant component data. */
 export function useTree<Data extends Record<string, any>>(
   children: React.ReactNode,
   data: Data | null = null,

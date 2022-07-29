@@ -1,6 +1,6 @@
 {
   "name": "reforest",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Index data for descendant React elements.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
