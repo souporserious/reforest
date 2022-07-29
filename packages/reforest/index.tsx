@@ -382,13 +382,11 @@ export function useTree<Data extends Record<string, any>>(
 
   if (isRoot) {
     childrenToRender = (
-      <React.Suspense fallback={null}>
-        <RootIdContext.Provider value={rootId}>
-          <TreeMapContext.Provider value={treeMapRef.current}>
-            {childrenToRender}
-          </TreeMapContext.Provider>
-        </RootIdContext.Provider>
-      </React.Suspense>
+      <RootIdContext.Provider value={rootId}>
+        <TreeMapContext.Provider value={treeMapRef.current}>
+          {childrenToRender}
+        </TreeMapContext.Provider>
+      </RootIdContext.Provider>
     )
   }
 
