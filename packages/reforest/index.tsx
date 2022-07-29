@@ -12,8 +12,6 @@ type TreeMap = Map<string, any>
 
 type RootTree = { data: any; treeMap: TreeMap | null }
 
-type Tree = { children?: Tree[] } & { [key: string]: any }
-
 const RootIdContext = React.createContext<string | null>(null)
 
 const MaxIndexContext = React.createContext<number[]>([])
@@ -342,6 +340,7 @@ export function useTree<Data extends Record<string, any>>(
     [childrenCount]
   )
   const onUpdateRef = React.useRef<typeof onUpdate>(onUpdate)
+  const previousStringifiedTree = React.useRef("")
 
   useIsomorphicLayoutEffect(() => {
     onUpdateRef.current = onUpdate
@@ -406,9 +405,14 @@ export function useTree<Data extends Record<string, any>>(
         const tree = {
           ...(data || {}),
           ...mapToTree(treeMapRef.current),
-        } as Data & { children: any[] }
+        } as Data & { children: Data[] }
+        const nextStringifiedTree = JSON.stringify(tree, null, 2)
 
-        onUpdateRef.current(tree, new Map(treeMapRef.current))
+        if (previousStringifiedTree.current !== nextStringifiedTree) {
+          onUpdateRef.current(tree, new Map(treeMapRef.current))
+
+          previousStringifiedTree.current = nextStringifiedTree
+        }
       }
     }
 
