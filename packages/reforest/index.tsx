@@ -200,13 +200,12 @@ let globalTimeoutId: ReturnType<typeof setTimeout>
  */
 export function useTreeData<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
-  computeData?: (collectedData: Map<string, Data> | null, indexPathString: string) => ComputedData
+  computeData?: (collectedData: Map<string, Data> | null, generatedId: string) => ComputedData
 ) {
   const treeMap = React.useContext(TreeMapContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
   const generatedId = React.useId().slice(1, -1)
-  const parsedId = data?.id || generatedId
   const computeDataRef = React.useRef<typeof computeData>(computeData)
 
   useIsomorphicLayoutEffect(() => {
@@ -271,13 +270,13 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
 
   useIsomorphicLayoutEffect(() => {
-    if (treeMap === null || indexPathString === null || computeData === undefined) {
+    if (treeMap === null || computeData === undefined) {
       return
     }
 
     function computeClientData() {
       setClientComputedData((currentComputedData) => {
-        const computedData = computeData!(treeMap ? new Map(treeMap) : null, indexPathString!)
+        const computedData = computeData!(treeMap ? new Map(treeMap) : null, generatedId!)
 
         if (JSON.stringify(currentComputedData) === JSON.stringify(computedData)) {
           return currentComputedData
@@ -290,7 +289,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
     computeClientData()
 
     return subscribe(treeMap, computeClientData)
-  }, [computeData, treeMap])
+  }, [computeData, treeMap, generatedId])
 
   const computedData = clientComputedData || serverComputedData
 
@@ -305,7 +304,6 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     return {
       computed: computedData,
-      id: parsedId,
       generatedId,
       maxIndex,
       maxIndexPath,
