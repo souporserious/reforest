@@ -451,6 +451,6 @@ export function useTree<Data extends Record<string, any>>(
 
   return {
     children: childrenToRender,
-    treeMap: new Map(treeMapRef.current),
+    treeMap: treeMapRef.current,
   }
 }

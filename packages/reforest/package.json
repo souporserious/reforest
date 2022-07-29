@@ -1,7 +1,7 @@
 {
   "name": "reforest",
-  "version": "0.4.0",
-  "description": "Index data for descendant React elements.",
+  "version": "0.4.1",
+  "description": "Collect and compute React props seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "typings": "dist/index.d.ts",

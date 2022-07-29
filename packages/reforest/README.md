@@ -1,6 +1,6 @@
 # 🌲 reforest
 
-Collect and replant React props across the server and client.
+Collect and compute React props seamlessly across the server and client.
 
 [Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
 
