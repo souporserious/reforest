@@ -350,33 +350,35 @@ export function useTree<Data extends Record<string, any>>(
   })
 
   /** Initiate this as the Map for index data if this is a top-level call. */
-  if (isRoot) {
-    let initialEntries: [string, any][] = []
+  if (treeMapRef.current === null) {
+    if (isRoot) {
+      let initialEntries: [string, any][] = []
 
-    /** Hydrate data if available in document head. */
-    if (!isServer) {
-      const serverData = document.getElementById(DATA_ID)?.innerHTML
+      /** Hydrate data if available in document head. */
+      if (!isServer) {
+        const serverData = document.getElementById(DATA_ID)?.innerHTML
 
-      if (rootId && serverData) {
-        const serverComputedData = JSON.parse(serverData)[rootId]
+        if (rootId && serverData) {
+          const serverComputedData = JSON.parse(serverData)[rootId]
 
-        if (serverComputedData) {
-          initialEntries = Object.entries(serverComputedData)
+          if (serverComputedData) {
+            initialEntries = Object.entries(serverComputedData)
+          }
         }
       }
-    }
 
-    treeMapRef.current = proxyMap(initialEntries)
+      treeMapRef.current = proxyMap(initialEntries)
 
-    /** Capture the initial data in render when running on the server. */
-    if (treeCollection) {
-      treeCollection.set(rootId, {
-        data,
-        treeMap: treeMapRef.current,
-      })
+      /** Capture the initial data in render when running on the server. */
+      if (isServer) {
+        treeCollection.set(rootId, {
+          data,
+          treeMap: treeMapRef.current,
+        })
+      }
+    } else {
+      treeMapRef.current = treeMap
     }
-  } else {
-    treeMapRef.current = treeMap
   }
 
   /** Update the top-level proxy Map of all index trees. */
