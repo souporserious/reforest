@@ -1,10 +1,8 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useTree, useTreeData } from "reforest"
+import { useTree, useTreeData, useTreeEffect } from "reforest"
 import { scroll, timeline } from "motion"
 
-const isServer = typeof window === "undefined"
-const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
 function Timeline({
@@ -14,67 +12,67 @@ function Timeline({
   children: React.ReactNode
   scroll?: boolean
 }) {
-  const [sceneKeyframes, setSceneKeyframes] = React.useState(null)
-  const handleTreeUpdate = React.useCallback((tree) => {
-    const ids = new Set()
-    let totalDuration = 0
+  const tree = useTree(childrenProp)
 
-    const sceneKeyframes = tree.children.flatMap((scene) => {
-      const sequences = flat(scene.children, {
-        getChildren: (node) => node?.children || [],
-      }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
-      const keyframes = sequences.flatMap((keyframes) => {
-        return keyframes.map((keyframe) => {
-          const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
-          const styles = {
-            width,
-            height,
-            scale,
-            opacity,
-            backgroundColor,
-            transform: "translate(0px, 0px)",
-          }
-          const options = { duration: scene.duration, at: totalDuration, delay }
-          const hasId = ids.has(id)
+  useTreeEffect(
+    tree.treeMap,
+    (tree) => {
+      const ids = new Set()
+      let totalDuration = 0
 
-          if (hasId) {
-            const bounds = document.getElementById(id)?.getBoundingClientRect()
-            const xOffset = window.scrollX + (bounds?.x || 0)
-            const yOffset = window.scrollY + (bounds?.y || 0)
+      const sceneKeyframes = tree.children.flatMap((scene) => {
+        const sequences = flat(scene.children, {
+          getChildren: (node) => node?.children || [],
+        }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+        const keyframes = sequences.flatMap((keyframes) => {
+          return keyframes.map((keyframe) => {
+            const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+            const styles = {
+              width,
+              height,
+              scale,
+              opacity,
+              backgroundColor,
+              transform: "translate(0px, 0px)",
+            }
+            const options = { duration: scene.duration, at: totalDuration, delay }
+            const hasId = ids.has(id)
 
-            styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-          } else {
-            ids.add(id)
-          }
+            if (hasId) {
+              const bounds = document.getElementById(id)?.getBoundingClientRect()
+              const xOffset = window.scrollX + (bounds?.x || 0)
+              const yOffset = window.scrollY + (bounds?.y || 0)
 
-          return [`#${id}`, styles, options]
+              styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+            } else {
+              ids.add(id)
+            }
+
+            return [`#${id}`, styles, options]
+          })
         })
+
+        totalDuration += scene.duration
+
+        return keyframes
       })
 
-      totalDuration += scene.duration
+      if (sceneKeyframes) {
+        const controls = timeline(sceneKeyframes)
 
-      return keyframes
-    })
+        if (scrollProp && controls.pause) {
+          return scroll(controls)
+        }
+      }
+    },
+    [scrollProp]
+  )
 
-    setSceneKeyframes(sceneKeyframes)
-  }, [])
-
-  const tree = useTree(childrenProp, null, handleTreeUpdate as any)
   const styles = {
     display: "grid",
     width: "100%",
     minHeight: "100vh",
   }
-
-  useIsomorphicLayoutEffect(() => {
-    if (sceneKeyframes) {
-      const controls = timeline(sceneKeyframes)
-
-      if (scrollProp && controls.pause) {
-        return scroll(controls)
-      }
-    }
-  }, [sceneKeyframes, scrollProp])
 
   return (
     <main style={styles}>

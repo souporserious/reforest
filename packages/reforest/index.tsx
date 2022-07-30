@@ -128,7 +128,7 @@ export function TreeProvider({
 }
 
 /** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
-function cleanTree(tree: any) {
+function cleanAndSortTree(tree: any) {
   if (tree.children && tree.children?.length > 0) {
     /** Sort children by the index path. */
     tree.children.sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
@@ -136,7 +136,7 @@ function cleanTree(tree: any) {
     return {
       ...tree.data,
       generatedId: tree.generatedId,
-      children: tree.children.map(cleanTree),
+      children: tree.children.map(cleanAndSortTree),
     }
   }
 
@@ -156,7 +156,7 @@ export function mapToTree(dataMap: Map<string, any>) {
     }
   })
   const tree = arrayToTree(parsedValues, { dataField: null })
-  const cleanedTree = cleanTree({ children: tree })
+  const cleanedTree = cleanAndSortTree({ children: tree })
 
   return cleanedTree
 }
@@ -176,25 +176,49 @@ export function useTreeEffect(
   treeMap: Map<string, any>,
 
   /** Updates when any tree data is changed and returns a nested tree array. */
-  onTreeUpdate: (tree: ReturnType<typeof mapToTree>) => void
+  onUpdate: (tree: ReturnType<typeof mapToTree>) => void | (() => void),
+
+  /** Dependencies for the effect. */
+  dependencies: any[] = []
 ) {
-  const onTreeUpdateRef = React.useRef<typeof onTreeUpdate>(onTreeUpdate)
+  const onUpdateRef = React.useRef<typeof onUpdate>(onUpdate)
+  const cleanupRef = React.useRef<ReturnType<typeof onUpdate> | null>(null)
+  const previousStringifiedTree = React.useRef("")
 
   useIsomorphicLayoutEffect(() => {
-    onTreeUpdateRef.current = onTreeUpdate
+    onUpdateRef.current = onUpdate
   })
 
   useIsomorphicLayoutEffect(() => {
     function handleTreeUpdate() {
-      onTreeUpdateRef.current(mapToTree(treeMap))
+      if (onUpdateRef.current) {
+        let treeData = {}
+
+        treeMap.forEach((data, key) => {
+          treeData[key] = data
+        })
+
+        const nextStringifiedTree = JSON.stringify(treeData)
+
+        if (previousStringifiedTree.current !== nextStringifiedTree) {
+          cleanupRef.current = onUpdateRef.current(mapToTree(treeMap))
+
+          previousStringifiedTree.current = nextStringifiedTree
+        }
+      }
     }
 
     /** Build initial tree once children have rendered. */
     handleTreeUpdate()
 
     /** Subscribe to future updates to tree. */
-    return subscribe(treeMap, handleTreeUpdate)
-  }, [treeMap])
+    const cleanupSubscription = subscribe(treeMap, handleTreeUpdate)
+
+    return () => {
+      cleanupSubscription()
+      cleanupRef.current?.()
+    }
+  }, dependencies.concat(treeMap))
 }
 
 /** Track initial component renders. */
@@ -335,11 +359,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 /** Provide indexes and subscribe to descendant component data. */
 export function useTree<Data extends Record<string, any>>(
   children: React.ReactNode,
-  data: Data | null = null,
-  onUpdate?: <UpdatedTree extends Data & { children: Data[] }>(
-    tree: UpdatedTree,
-    treeMap: Map<string, Data>
-  ) => void
+  data: Data | null = null
 ) {
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
   const parentIndexPathString = React.useContext(IndexContext)
@@ -355,12 +375,6 @@ export function useTree<Data extends Record<string, any>>(
     () => parentMaxIndexPath.concat(childrenCount - 1),
     [childrenCount]
   )
-  const onUpdateRef = React.useRef<typeof onUpdate>(onUpdate)
-  const previousStringifiedTree = React.useRef("")
-
-  useIsomorphicLayoutEffect(() => {
-    onUpdateRef.current = onUpdate
-  })
 
   /** Initiate this as the Map for index data if this is a top-level call. */
   if (treeMapRef.current === null) {
@@ -409,37 +423,6 @@ export function useTree<Data extends Record<string, any>>(
       }
     }
   }, [isRoot, rootId, data, treeCollection])
-
-  /** Optionally subscribe to this trees data changes. */
-  useIsomorphicLayoutEffect(() => {
-    if (onUpdateRef.current === undefined) {
-      return
-    }
-
-    function buildTree() {
-      if (treeMapRef.current && onUpdateRef.current) {
-        const tree = {
-          ...(data || {}),
-          ...mapToTree(treeMapRef.current),
-        } as Data & { children: Data[] }
-        const nextStringifiedTree = JSON.stringify(tree, null, 2)
-
-        if (previousStringifiedTree.current !== nextStringifiedTree) {
-          onUpdateRef.current(tree, sortMapByIndexPath(treeMapRef.current))
-
-          previousStringifiedTree.current = nextStringifiedTree
-        }
-      }
-    }
-
-    /** Build initial index tree once children have rendered. */
-    buildTree()
-
-    /** Subscribe to future updates to tree. */
-    if (treeMapRef.current) {
-      return subscribe(treeMapRef.current, buildTree)
-    }
-  }, [treeMap])
 
   let childrenToRender = (
     <MaxIndexContext.Provider value={maxIndexPath}>
