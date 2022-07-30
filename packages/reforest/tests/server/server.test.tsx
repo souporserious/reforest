@@ -2,7 +2,7 @@ import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
 
-import { createIndexedTreeProvider, useIndex, useIndexedChildren } from "../../index"
+import { createTreeProvider, useTree, useTreeData } from "../../index"
 
 /** Simple render function to mock what renderToPipeableStream does. */
 function render(element: React.ReactNode) {
@@ -29,83 +29,93 @@ function render(element: React.ReactNode) {
 
 test("server-side rendering", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const index = useIndex({ value }, (indexedData) => {
-      if (indexedData) {
-        return indexedData.length
+    const data = useTreeData(
+      React.useMemo(() => ({ value }), [value]),
+      (treeMap) => {
+        if (treeMap) {
+          return treeMap.size
+        }
+        return 0
       }
-      return 0
-    })
-    const indexedChildren = useIndexedChildren(children)
+    )
+    const tree = useTree(children)
 
     return (
-      <div data-testid={index?.indexPathString}>
-        {index!.computedData} {indexedChildren}
+      <div data-testid={data?.indexPathString}>
+        {data!.computed} {tree.children}
       </div>
     )
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const indexedChildren = useIndexedChildren(children)
-    return <>{indexedChildren}</>
+    const tree = useTree(children)
+
+    return tree.children
   }
 
-  const { IndexTreeProvider, getIndexedTrees } = createIndexedTreeProvider()
+  const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
   const renderedString = await render(
-    <IndexTreeProvider>
-      <ItemList>
-        <Item value="apple">Apple</Item>
-        <Item value="orange">Orange</Item>
-        <Item value="banana">Banana</Item>
-      </ItemList>
-    </IndexTreeProvider>
+    <React.Suspense fallback={null}>
+      <TreeProvider>
+        <ItemList>
+          <Item value="apple">Apple</Item>
+          <Item value="orange">Orange</Item>
+          <Item value="banana">Banana</Item>
+        </ItemList>
+      </TreeProvider>
+    </React.Suspense>
   )
 
-  const indexedTrees = getIndexedTrees()
-
   expect(renderedString).toMatchSnapshot()
-  expect(indexedTrees).toMatchSnapshot()
+  expect(stringifyTreeCollection()).toMatchSnapshot()
 })
 
 test("changing rendered elements based on computed data", async () => {
   function Box({ id }: { id: string }) {
-    const index = useIndex({ id }, (indexedData, localIndexPathString) => {
-      const ids = new Set()
-      let shouldRender = false
+    const data = useTreeData(
+      React.useMemo(() => ({ id }), [id]),
+      (treeMap, generatedId) => {
+        const ids = new Set()
+        let shouldRender = false
 
-      indexedData?.forEach(([indexPathString, { id }]) => {
-        const isSameIndex = indexPathString === localIndexPathString
-        const hasId = ids.has(id)
+        treeMap?.forEach(({ id }, generatedIdToCompare) => {
+          const isSameId = generatedId === generatedIdToCompare
+          const hasId = ids.has(id)
 
-        if (isSameIndex) {
-          shouldRender = !hasId
-        }
+          if (isSameId) {
+            shouldRender = !hasId
+          }
 
-        if (!hasId) {
-          ids.add(id)
-        }
-      })
+          if (!hasId) {
+            ids.add(id)
+          }
+        })
 
-      return shouldRender
-    })
+        return shouldRender
+      }
+    )
 
-    return index?.computedData ? <div id={id} /> : null
+    return data?.computed ? <div id={id} /> : null
   }
 
   function Parent({ children }: { children: React.ReactNode }) {
-    const indexedChildren = useIndexedChildren(children)
-    return <>{indexedChildren}</>
+    const tree = useTree(children)
+
+    return tree.children
   }
 
-  const { IndexTreeProvider } = createIndexedTreeProvider()
+  const { TreeProvider } = createTreeProvider()
   const renderedString = await render(
-    <IndexTreeProvider>
-      <Parent>
-        <Box id="a" />
-        <Box id="b" />
-        <Box id="c" />
-        <Box id="b" />
-      </Parent>
-    </IndexTreeProvider>
+    <React.Suspense fallback={null}>
+      <TreeProvider>
+        <Parent>
+          <Box id="a" />
+          <Box id="b" />
+          <Box id="c" />
+          <Box id="b" />
+        </Parent>
+      </TreeProvider>
+    </React.Suspense>
   )
 
   expect(renderedString).toMatchSnapshot()

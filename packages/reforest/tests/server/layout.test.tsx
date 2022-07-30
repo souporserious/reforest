@@ -1,19 +1,17 @@
 import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 
-import { createIndexedTreeProvider } from "../../index"
+import { createTreeProvider } from "../../index"
 import { App } from "../App"
 
 test("server-side tree collection", () => {
-  const { IndexTreeProvider, getIndexedTrees } = createIndexedTreeProvider()
+  const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
 
   ReactDOMServer.renderToString(
-    <IndexTreeProvider>
+    <TreeProvider>
       <App />
-    </IndexTreeProvider>
+    </TreeProvider>
   )
 
-  const indexedTrees = getIndexedTrees()
-
-  expect(indexedTrees).toMatchSnapshot()
+  expect(stringifyTreeCollection()).toMatchSnapshot()
 })

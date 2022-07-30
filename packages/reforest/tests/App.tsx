@@ -29,9 +29,9 @@ function Grid({
     () => createGrid({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const indexedChildren = useTree(children)
+  const tree = useTree(children)
 
-  return <div style={{ width, height }}>{indexedChildren}</div>
+  return <div style={{ width, height }}>{tree.children}</div>
 }
 
 function Column({
@@ -51,12 +51,11 @@ function Column({
     () => createColumn({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-
-  const indexedChildren = useTree(children)
+  const tree = useTree(children)
 
   useTreeData(node)
 
-  return indexedChildren
+  return tree.children
 }
 
 function Row({
@@ -76,12 +75,11 @@ function Row({
     () => createRow({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-
-  const indexedChildren = useTree(children)
+  const tree = useTree(children)
 
   useTreeData(node)
 
-  return indexedChildren
+  return tree.children
 }
 
 function Space({ size }: { size?: number }) {
@@ -110,16 +108,18 @@ function Box({
 
 export function App() {
   return (
-    <Grid columns={12} rows={12}>
-      <Row>
-        <Space />
-        <Column>
+    <React.Suspense fallback={null}>
+      <Grid columns={12} rows={12}>
+        <Row>
           <Space />
-          <Box>Box</Box>
+          <Column>
+            <Space />
+            <Box>Box</Box>
+            <Space />
+          </Column>
           <Space />
-        </Column>
-        <Space />
-      </Row>
-    </Grid>
+        </Row>
+      </Grid>
+    </React.Suspense>
   )
 }
