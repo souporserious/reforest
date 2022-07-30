@@ -9,84 +9,62 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
           Object {
             "children": Array [
               Object {
+                "indexPathString": "0.1",
                 "value": "fuji",
               },
               Object {
+                "indexPathString": "0.2",
                 "value": "gala",
               },
               Object {
+                "indexPathString": "0.3",
                 "value": "honeycrisp",
               },
             ],
+            "generatedId": "r9",
+            "indexPathString": "0",
             "value": "apples",
           },
           Object {
             "children": Array [
               Object {
+                "indexPathString": "1.1",
                 "value": "mandarin",
               },
               Object {
+                "indexPathString": "1.2",
                 "value": "naval",
               },
               Object {
+                "indexPathString": "1.3",
                 "value": "tangerine",
               },
             ],
+            "generatedId": "rh",
+            "indexPathString": "1",
             "value": "apples",
           },
           Object {
             "children": Array [
               Object {
+                "indexPathString": "2.1",
                 "value": "anjou",
               },
               Object {
+                "indexPathString": "2.2",
                 "value": "asian",
               },
               Object {
+                "indexPathString": "2.3",
                 "value": "bosc",
               },
             ],
+            "generatedId": "rp",
+            "indexPathString": "2",
             "value": "pears",
           },
         ],
-      },
-      Map {
-        "0.1" => Object {
-          "value": "fuji",
-        },
-        "0.2" => Object {
-          "value": "gala",
-        },
-        "0.3" => Object {
-          "value": "honeycrisp",
-        },
-        "0" => Object {
-          "value": "apples",
-        },
-        "1.1" => Object {
-          "value": "mandarin",
-        },
-        "1.2" => Object {
-          "value": "naval",
-        },
-        "1.3" => Object {
-          "value": "tangerine",
-        },
-        "1" => Object {
-          "value": "apples",
-        },
-        "2.1" => Object {
-          "value": "anjou",
-        },
-        "2.2" => Object {
-          "value": "asian",
-        },
-        "2.3" => Object {
-          "value": "bosc",
-        },
-        "2" => Object {
-          "value": "pears",
-        },
+        "generatedId": undefined,
       },
     ],
   ],

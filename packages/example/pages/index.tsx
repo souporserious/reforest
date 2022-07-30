@@ -1,44 +1,73 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useIndexedChildren, useIndex } from "use-indexed-children"
+import { useTree, useTreeData, useTreeEffect } from "reforest"
+import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
 function Timeline({
-  children,
+  children: childrenProp,
   scroll: scrollProp,
 }: {
   children: React.ReactNode
   scroll?: boolean
 }) {
-  const handleTreeUpdate = React.useCallback(({ children: scenes }) => {
-    let totalDuration = 0
+  const tree = useTree(childrenProp)
 
-    const sceneKeyframes = scenes.flatMap((scene) => {
-      const sequences = flat(scene.children, {
-        getChildren: (node) => node?.children || [],
-      })
-      const keyframes = sequences.flatMap((keyframes) => {
-        return keyframes.map((keyframe) => {
-          const { id, delay, width, height, scale, backgroundColor, opacity } = keyframe
+  useTreeEffect(
+    tree.treeMap,
+    (tree) => {
+      const ids = new Set()
+      let totalDuration = 0
 
-          return [
-            `#${id}`,
-            { width, height, scale, opacity, backgroundColor },
-            { delay, at: totalDuration },
-          ]
+      const sceneKeyframes = tree.children.flatMap((scene) => {
+        const sequences = flat(scene.children, {
+          getChildren: (node) => node?.children || [],
+        }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+        const keyframes = sequences.flatMap((keyframes) => {
+          return keyframes.map((keyframe) => {
+            const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+            const styles = {
+              width,
+              height,
+              scale,
+              opacity,
+              backgroundColor,
+              transform: "translate(0px, 0px)",
+            }
+            const options = { duration: scene.duration, at: totalDuration, delay }
+            const hasId = ids.has(id)
+
+            if (hasId) {
+              const bounds = document.getElementById(id)?.getBoundingClientRect()
+              const xOffset = window.scrollX + (bounds?.x || 0)
+              const yOffset = window.scrollY + (bounds?.y || 0)
+
+              styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+            } else {
+              ids.add(id)
+            }
+
+            return [`#${id}`, styles, options]
+          })
         })
+
+        totalDuration += scene.duration
+
+        return keyframes
       })
 
-      totalDuration += scene.duration
+      if (sceneKeyframes) {
+        const controls = timeline(sceneKeyframes)
 
-      return keyframes
-    })
+        if (scrollProp && controls.pause) {
+          return scroll(controls)
+        }
+      }
+    },
+    [scrollProp]
+  )
 
-    console.log(sceneKeyframes)
-  }, [])
-
-  const indexedChildren = useIndexedChildren(children, null, handleTreeUpdate as any)
   const styles = {
     display: "grid",
     width: "100%",
@@ -48,24 +77,30 @@ function Timeline({
   return (
     <main style={styles}>
       <TimelineContext.Provider value={{ scroll: scrollProp }}>
-        {indexedChildren}
+        {tree.children}
       </TimelineContext.Provider>
     </main>
   )
 }
 
-function Scene({ children, duration = 1 }: { children: React.ReactNode; duration?: number }) {
+function Scene({
+  children: childrenProp,
+  duration = 1,
+}: {
+  children: React.ReactNode
+  duration?: number
+}) {
   const timelineContextValue = React.useContext(TimelineContext)
-  const id = React.useId().slice(1, -1)
-  const node = React.useMemo(() => ({ id, duration }), [id, duration])
-
-  useIndex(node)
-
-  const indexedChildren = useIndexedChildren(children)
+  const node = React.useMemo(() => ({ duration }), [duration])
+  const data = useTreeData(node)
+  const tree = useTree(childrenProp)
 
   if (timelineContextValue?.scroll) {
     return (
-      <section id={id} style={{ display: "grid", height: `${100 * (duration + 1)}vh` }}>
+      <section
+        id={data.generatedId}
+        style={{ display: "grid", height: `${100 * (duration + 1)}vh` }}
+      >
         <div
           style={{
             display: "grid",
@@ -75,7 +110,7 @@ function Scene({ children, duration = 1 }: { children: React.ReactNode; duration
             top: 0,
           }}
         >
-          {indexedChildren}
+          {tree.children}
         </div>
       </section>
     )
@@ -83,7 +118,7 @@ function Scene({ children, duration = 1 }: { children: React.ReactNode; duration
 
   return (
     <section
-      id={id}
+      id={data.generatedId}
       style={{
         gridArea: "1 / 1",
         display: "grid",
@@ -91,13 +126,13 @@ function Scene({ children, duration = 1 }: { children: React.ReactNode; duration
         height: "100vh",
       }}
     >
-      {indexedChildren}
+      {tree.children}
     </section>
   )
 }
 
 function Box({
-  id: idProp,
+  id,
   width,
   height,
   backgroundColor,
@@ -113,8 +148,6 @@ function Box({
   scale?: [number, number]
   delay?: number
 }) {
-  const generatedId = React.useId().slice(1, -1)
-  const id = idProp || generatedId
   const node = React.useMemo(
     () => ({
       id,
@@ -128,15 +161,15 @@ function Box({
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
 
-  const index = useIndex(node, (indexedData, localIndexPathString) => {
+  const data = useTreeData(node, (treeMap, generatedId) => {
     const ids = new Set()
     let shouldRender = false
 
-    indexedData?.forEach(([indexPathString, { id }]) => {
-      const isSameIndex = indexPathString === localIndexPathString
+    treeMap.forEach(({ id }, generatedIdToCompare) => {
+      const isSameId = generatedId === generatedIdToCompare
       const hasId = ids.has(id)
 
-      if (isSameIndex) {
+      if (isSameId) {
         shouldRender = !hasId
       }
 
@@ -147,7 +180,7 @@ function Box({
 
     return shouldRender
   })
-  const shouldRender = index!.computedData
+  const shouldRender = data.computed
 
   if (!shouldRender) {
     return null
@@ -179,11 +212,13 @@ export default function App() {
       </div>
       <Timeline scroll={scroll}>
         <Scene duration={2}>
-          <Box id="box-1" width="80vw" height="60vh" backgroundColor="green" />
+          <Box id="box-1" width="80vw" height="60vh" backgroundColor="blue" />
         </Scene>
         <Scene duration={3}>
           <Box id="box-1" width="70vw" height="50vh" backgroundColor="darkblue" />
-          <Box id="box-2" width="60vw" height="40vh" backgroundColor="blue" opacity={[0, 1]} />
+          {scroll ? (
+            <Box id="box-2" width="60vw" height="40vh" backgroundColor="blue" opacity={[0, 1]} />
+          ) : null}
         </Scene>
         <Scene duration={1.5}>
           <Box id="box-1" width="60vw" height="80vh" backgroundColor="orange" />

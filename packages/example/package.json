@@ -8,16 +8,17 @@
     "start": "next start"
   },
   "dependencies": {
-    "@types/node": "^18.6.1",
+    "@types/node": "^18.6.2",
     "@types/react": "^18.0.15",
+    "motion": "^10.13.1",
     "next": "^12.2.3",
     "next-transpile-modules": "^9.0.0",
     "react": "*",
     "react-dom": "*",
+    "reforest": "workspace:*",
     "suspend-react": "^0.0.8",
     "tree-visit": "^0.1.2",
     "typescript": "^4.7.4",
-    "valtio": "^1.6.3",
-    "use-indexed-children": "workspace:*"
+    "valtio": "^1.6.3"
   }
 }
