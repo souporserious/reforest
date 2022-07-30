@@ -366,9 +366,9 @@ export function useTree<Data extends Record<string, any>>(
   const treeCollection = React.useContext(TreeCollectionContext)
   const treeMap = React.useContext(TreeMapContext)
   const treeMapRef = React.useRef<TreeMapContextValue>(null)
-  const parentRootId = React.useContext(RootIdContext)
+  const contextRootId = React.useContext(RootIdContext)
   const generatedRootId = React.useId().slice(1, -1)
-  const rootId = parentRootId || generatedRootId
+  const rootId = contextRootId || generatedRootId
   const isRoot = treeMap === null
   const childrenCount = React.Children.count(children)
   const maxIndexPath = React.useMemo(
@@ -456,6 +456,7 @@ export function useTree<Data extends Record<string, any>>(
   }
 
   return {
+    rootId,
     children: childrenToRender,
     treeMap: treeMapRef.current,
   }
