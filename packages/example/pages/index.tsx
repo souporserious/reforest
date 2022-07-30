@@ -1,7 +1,10 @@
 import * as React from "react"
 import { flat } from "tree-visit"
 import { useTree, useTreeData } from "reforest"
+import { scroll, timeline } from "motion"
 
+const isServer = typeof window === "undefined"
+const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
 function Timeline({
@@ -11,21 +14,40 @@ function Timeline({
   children: React.ReactNode
   scroll?: boolean
 }) {
-  const handleTreeUpdate = React.useCallback((tree, treeMap) => {
+  const [sceneKeyframes, setSceneKeyframes] = React.useState(null)
+  const handleTreeUpdate = React.useCallback((tree) => {
+    const ids = new Set()
     let totalDuration = 0
 
     const sceneKeyframes = tree.children.flatMap((scene) => {
       const sequences = flat(scene.children, {
         getChildren: (node) => node?.children || [],
-      })
+      }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
       const keyframes = sequences.flatMap((keyframes) => {
         return keyframes.map((keyframe) => {
-          const { id, delay, width, height, scale, backgroundColor, opacity } = keyframe
-          return [
-            `#${id}`,
-            { width, height, scale, opacity, backgroundColor },
-            { delay, at: totalDuration },
-          ]
+          const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+          const styles = {
+            width,
+            height,
+            scale,
+            opacity,
+            backgroundColor,
+            transform: "translate(0px, 0px)",
+          }
+          const options = { duration: scene.duration, at: totalDuration, delay }
+          const hasId = ids.has(id)
+
+          if (hasId) {
+            const bounds = document.getElementById(id)?.getBoundingClientRect()
+            const xOffset = window.scrollX + (bounds?.x || 0)
+            const yOffset = window.scrollY + (bounds?.y || 0)
+
+            styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+          } else {
+            ids.add(id)
+          }
+
+          return [`#${id}`, styles, options]
         })
       })
 
@@ -34,7 +56,7 @@ function Timeline({
       return keyframes
     })
 
-    console.log(sceneKeyframes)
+    setSceneKeyframes(sceneKeyframes)
   }, [])
 
   const tree = useTree(childrenProp, null, handleTreeUpdate as any)
@@ -43,6 +65,16 @@ function Timeline({
     width: "100%",
     minHeight: "100vh",
   }
+
+  useIsomorphicLayoutEffect(() => {
+    if (sceneKeyframes) {
+      const controls = timeline(sceneKeyframes)
+
+      if (scrollProp && controls.pause) {
+        return scroll(controls)
+      }
+    }
+  }, [sceneKeyframes, scrollProp])
 
   return (
     <main style={styles}>
@@ -61,16 +93,16 @@ function Scene({
   duration?: number
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
-  const id = React.useId().slice(1, -1)
-  const node = React.useMemo(() => ({ id, duration }), [id, duration])
-
-  useTreeData(node)
-
+  const node = React.useMemo(() => ({ duration }), [duration])
+  const data = useTreeData(node)
   const tree = useTree(childrenProp)
 
   if (timelineContextValue?.scroll) {
     return (
-      <section id={id} style={{ display: "grid", height: `${100 * (duration + 1)}vh` }}>
+      <section
+        id={data.generatedId}
+        style={{ display: "grid", height: `${100 * (duration + 1)}vh` }}
+      >
         <div
           style={{
             display: "grid",
@@ -88,7 +120,7 @@ function Scene({
 
   return (
     <section
-      id={id}
+      id={data.generatedId}
       style={{
         gridArea: "1 / 1",
         display: "grid",
@@ -102,7 +134,7 @@ function Scene({
 }
 
 function Box({
-  id: idProp,
+  id,
   width,
   height,
   backgroundColor,
@@ -118,8 +150,6 @@ function Box({
   scale?: [number, number]
   delay?: number
 }) {
-  const generatedId = React.useId().slice(1, -1)
-  const id = idProp || generatedId
   const node = React.useMemo(
     () => ({
       id,
@@ -137,8 +167,8 @@ function Box({
     const ids = new Set()
     let shouldRender = false
 
-    treeMap.forEach(({ id }, localGeneratedId) => {
-      const isSameId = localGeneratedId === generatedId
+    treeMap.forEach(({ id }, generatedIdToCompare) => {
+      const isSameId = generatedId === generatedIdToCompare
       const hasId = ids.has(id)
 
       if (isSameId) {

@@ -161,6 +161,15 @@ export function mapToTree(dataMap: Map<string, any>) {
   return cleanedTree
 }
 
+/** Sorts a map by an indexPathString property. */
+export function sortMapByIndexPath(treeMap: Map<string, any>) {
+  const sortedEntries = Array.from(treeMap.entries()).sort(
+    (a, b) => parseFloat(a[1].indexPathString) - parseFloat(b[1].indexPathString)
+  )
+
+  return new Map(sortedEntries)
+}
+
 /** Subscribe to all tree updates. */
 export function useTreeEffect(
   /** A tree map to subscribe to. Must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
@@ -198,7 +207,10 @@ let globalTimeoutId: ReturnType<typeof setTimeout>
  */
 export function useTreeData<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
-  computeData?: (collectedData: Map<string, Data> | null, generatedId: string) => ComputedData
+  computeData?: (
+    treeMap: Map<string, { indexPathString: string } & Data> | null,
+    generatedId: string
+  ) => ComputedData
 ) {
   const treeMap = React.useContext(TreeMapContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
@@ -241,7 +253,11 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
           /** Store all of the promises to compute. */
           globalResolves.push(() =>
-            resolve(computeDataRef.current ? computeDataRef.current(treeMap, generatedId) : treeMap)
+            resolve(
+              computeDataRef.current
+                ? computeDataRef.current(treeMap ? sortMapByIndexPath(treeMap) : null, generatedId)
+                : null
+            )
           )
 
           /** Push to the end of the event stack to allow all components to initially render. */
@@ -274,7 +290,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     function computeClientData() {
       setClientComputedData((currentComputedData) => {
-        const computedData = computeData!(treeMap ? new Map(treeMap) : null, generatedId!)
+        const computedData = computeData!(treeMap ? sortMapByIndexPath(treeMap) : null, generatedId)
 
         if (JSON.stringify(currentComputedData) === JSON.stringify(computedData)) {
           return currentComputedData
@@ -322,7 +338,7 @@ export function useTree<Data extends Record<string, any>>(
   data: Data | null = null,
   onUpdate?: <UpdatedTree extends Data & { children: Data[] }>(
     tree: UpdatedTree,
-    treeMap: Map<string, any>
+    treeMap: Map<string, Data>
   ) => void
 ) {
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
@@ -409,7 +425,7 @@ export function useTree<Data extends Record<string, any>>(
         const nextStringifiedTree = JSON.stringify(tree, null, 2)
 
         if (previousStringifiedTree.current !== nextStringifiedTree) {
-          onUpdateRef.current(tree, new Map(treeMapRef.current))
+          onUpdateRef.current(tree, sortMapByIndexPath(treeMapRef.current))
 
           previousStringifiedTree.current = nextStringifiedTree
         }
