@@ -124,7 +124,7 @@ test("changing rendered elements based on computed data", async () => {
 })
 
 test("tree collection", async () => {
-  const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
+  const { TreeProvider, stringifyTreeComputedData, stringifyTreeCollection } = createTreeProvider()
 
   const renderedString = await render(
     <TreeProvider>
@@ -134,4 +134,5 @@ test("tree collection", async () => {
 
   expect(renderedString).toMatchSnapshot()
   expect(stringifyTreeCollection()).toMatchSnapshot()
+  expect(stringifyTreeComputedData()).toMatchSnapshot()
 })

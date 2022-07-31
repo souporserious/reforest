@@ -37,7 +37,33 @@ export const TreeMapContext = React.createContext<TreeMapContextValue>(null)
 
 TreeMapContext.displayName = "TreeMapContext"
 
-let initialTreeCollectionIds: string[] | null = null
+/** Gets the initial computed data from the injected script tag. */
+export function getInitialTreeComputedData() {
+  let serverEntries: [string, any][] = []
+
+  /** Hydrate data if available in document head. */
+  if (!isServer) {
+    const serverData = document.getElementById(DATA_ID)?.innerHTML
+
+    if (serverData) {
+      const serverComputedData = JSON.parse(serverData)
+
+      if (serverComputedData) {
+        serverEntries = Object.entries(serverComputedData)
+      }
+    }
+  }
+
+  return serverEntries
+}
+
+const initialTreeComputedData = getInitialTreeComputedData()
+
+export const TreeComputedDataContext = React.createContext<Map<string, any> | null>(
+  initialTreeComputedData.length > 0 ? new Map(initialTreeComputedData) : null
+)
+
+TreeComputedDataContext.displayName = "TreeComputedDataContext"
 
 /** Preloads available data when on the client. */
 export function preloadClientData() {
@@ -45,15 +71,11 @@ export function preloadClientData() {
     const serverData = document.getElementById(DATA_ID)?.innerHTML
 
     if (serverData) {
-      const treeCollection = JSON.parse(serverData)
+      const treeComputedData = JSON.parse(serverData)
 
-      const initialTreeCollectionEntries = Object.values(treeCollection).flatMap(
-        (tree: Record<string, any>) => Object.entries(tree)
-      )
-
-      initialTreeCollectionIds = initialTreeCollectionEntries.map(([id]) => id)
-
-      initialTreeCollectionEntries.forEach(([, data]) => preload(async () => data, [data.id]))
+      Object.entries(treeComputedData).forEach(([key, value]) => {
+        preload(async () => value, [key])
+      })
     }
   }
 }
@@ -70,7 +92,7 @@ export function parseIndexPath(indexPathString: string) {
   return indexPathString.split(".").map((index) => parseInt(index, 10))
 }
 
-/** Stringifys a tree map. */
+/** Stringify a tree collection. */
 export function stringifyTreeCollection(treeCollection: Map<string, any>) {
   let allData = {}
 
@@ -85,14 +107,28 @@ export function stringifyTreeCollection(treeCollection: Map<string, any>) {
   return JSON.stringify(allData)
 }
 
+/** Stringify a tree map. */
+export function stringifyTreeMap(treeMap: Map<string, any>) {
+  let allData = {}
+
+  treeMap.forEach((data, key) => {
+    allData[key] = data
+  })
+
+  return JSON.stringify(allData)
+}
+
 /** Wraps a tree with a Map for gathering indexed data on the server. */
 export function createTreeProvider(initialEntries?: [string, any][]) {
   const treeCollection = proxyMap<string, RootTree>(initialEntries)
+  const treeComputedData = new Map<string, any>()
 
   function TreeProvider(props: { children: React.ReactNode }) {
     return (
       <TreeCollectionContext.Provider value={treeCollection}>
-        {props.children}
+        <TreeComputedDataContext.Provider value={treeComputedData}>
+          {props.children}
+        </TreeComputedDataContext.Provider>
       </TreeCollectionContext.Provider>
     )
   }
@@ -100,10 +136,12 @@ export function createTreeProvider(initialEntries?: [string, any][]) {
   return {
     TreeProvider,
     treeCollection,
+    treeComputedData,
     stringifyTreeCollection: () => stringifyTreeCollection(treeCollection),
+    stringifyTreeComputedData: () => stringifyTreeMap(treeComputedData),
     getInitializerScript: () =>
-      `<script id="${DATA_ID}" type="application/json">${stringifyTreeCollection(
-        treeCollection
+      `<script id="${DATA_ID}" type="application/json">${stringifyTreeMap(
+        treeComputedData
       )}</script>`,
   }
 }
@@ -111,25 +149,41 @@ export function createTreeProvider(initialEntries?: [string, any][]) {
 /** Provides a tree collection for subscribing to all tree data on the client, see [createTreeProvider] for rendering on the server. */
 export function TreeProvider({
   children,
-  initialEntries,
+  initialTreeCollectionEntries,
+  initialTreeComputedDataEntries,
 }: {
   children: React.ReactNode
-  initialEntries?: [string, any][]
+  initialTreeCollectionEntries?: [string, any][]
+  initialTreeComputedDataEntries?: [string, any][]
 }) {
-  const treeCollection = React.useContext(TreeCollectionContext)
+  const treeCollectionContext = React.useContext(TreeCollectionContext)
   const treeCollectionContextValue = React.useRef<Map<string, RootTree> | null>(null)
+  const treeComputedDataContext = React.useContext(TreeComputedDataContext)
+  const treeComputedDataContextValue = React.useRef<Map<string, any> | null>(null)
 
-  if (treeCollectionContextValue.current === null) {
-    if (initialEntries) {
-      treeCollectionContextValue.current = proxyMap<string, RootTree>(initialEntries)
-    } else {
-      treeCollectionContextValue.current = treeCollection
-    }
+  if (treeCollectionContext === null && treeCollectionContextValue.current === null) {
+    /** TODO: add support for initial tree collection from script tag */
+
+    treeCollectionContextValue.current = proxyMap<string, RootTree>(initialTreeCollectionEntries)
+  }
+
+  if (treeComputedDataContext === null && treeComputedDataContextValue.current === null) {
+    const serverEntries = getInitialTreeComputedData()
+
+    treeComputedDataContextValue.current = new Map<string, any>(
+      initialTreeComputedDataEntries || serverEntries
+    )
   }
 
   return (
-    <TreeCollectionContext.Provider value={treeCollectionContextValue.current}>
-      {children}
+    <TreeCollectionContext.Provider
+      value={treeCollectionContext || treeCollectionContextValue.current}
+    >
+      <TreeComputedDataContext.Provider
+        value={treeComputedDataContext || treeComputedDataContextValue.current}
+      >
+        {children}
+      </TreeComputedDataContext.Provider>
     </TreeCollectionContext.Provider>
   )
 }
@@ -245,6 +299,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   ) => ComputedData
 ) {
   const treeMap = React.useContext(TreeMapContext)
+  const treeComputedData = React.useContext(TreeComputedDataContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
   const generatedId = React.useId().slice(1, -1)
@@ -274,50 +329,42 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
   /** Use Suspense to re-render the component before committing the final props on the server and hydration **only**. */
   const isServerWithComputedData = isServer && computeData !== undefined
-  const isClientWithInitialData = !isServer && initialTreeCollectionIds !== null
   let serverComputedData: ComputedData | null = null
 
-  if (treeMap !== null && (isServerWithComputedData || isClientWithInitialData)) {
-    serverComputedData = suspend(
-      () => {
-        return new Promise((resolve) => {
-          /** Keep clearing timeout until the last component renders. */
-          clearTimeout(globalTimeoutId)
+  if (treeMap !== null && isServerWithComputedData) {
+    serverComputedData = suspend(() => {
+      return new Promise((resolve) => {
+        /** Keep clearing timeout until the last component renders. */
+        clearTimeout(globalTimeoutId)
 
-          /** Store all of the promises to compute. */
-          globalResolves.push(() =>
-            resolve(
-              computeDataRef.current
-                ? computeDataRef.current(
-                    {
-                      map: sortMapByIndexPath(treeMap),
-                      computed: (treeMap as any)?.computed,
-                    },
-                    generatedId
-                  )
-                : null
-            )
+        /** Store all of the promises to compute. */
+        globalResolves.push(() =>
+          resolve(
+            computeDataRef.current
+              ? computeDataRef.current(
+                  {
+                    map: sortMapByIndexPath(treeMap),
+                    computed: (treeMap as any)?.computed,
+                  },
+                  generatedId
+                )
+              : null
           )
+        )
 
-          /** Push to the end of the event stack to allow all leaf components to initially render. */
-          globalTimeoutId = setTimeout(() => {
-            /** Resolve all of the leaf promises now that we have stored and computed all data. */
-            globalResolves.forEach((resolve) => resolve())
-            globalResolves = []
-          })
+        /** Push to the end of the event stack to allow all leaf components to initially render. */
+        globalTimeoutId = setTimeout(() => {
+          /** Resolve all of the leaf promises now that we have stored and computed all data. */
+          globalResolves.forEach((resolve) => resolve())
+          globalResolves = []
         })
-      },
-      [generatedId],
-      {
-        /** Hack the equality function to only run once on the client and not forever infinite loop since React.useId changes. */
-        equal(a, b) {
-          const aIndex = initialTreeCollectionIds?.indexOf(a)
-          const bIndex = initialTreeCollectionIds?.indexOf(b)
+      })
+    }, [generatedId]) as ComputedData
 
-          return a === b || aIndex === -1 || bIndex === -1
-        },
-      }
-    ) as ComputedData
+    /** Store computed data so it can be injected on the server. */
+    treeComputedData?.set(generatedId, serverComputedData)
+  } else {
+    serverComputedData = treeComputedData?.get(generatedId)
   }
 
   /** Listen for store changes and compute props before rendering to the screen on client. */
@@ -413,22 +460,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
   /** Initiate this as the Map for index data if this is a top-level call. */
   if (treeMapRef.current === null) {
     if (isRoot) {
-      let initialEntries: [string, any][] = []
-
-      /** Hydrate data if available in document head. */
-      if (!isServer) {
-        const serverData = document.getElementById(DATA_ID)?.innerHTML
-
-        if (generatedId && serverData) {
-          const serverComputedData = JSON.parse(serverData)[generatedId]
-
-          if (serverComputedData) {
-            initialEntries = Object.entries(serverComputedData)
-          }
-        }
-      }
-
-      treeMapRef.current = proxyMap(initialEntries, {
+      treeMapRef.current = proxyMap([], {
         /** TODO: for some reason proxy-memoize wasn't working here, should look into optimizing this call if possible. */
         computed: (snap) => {
           return computeDataRef.current ? computeDataRef.current(snap, generatedId) : null
