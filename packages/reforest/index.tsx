@@ -11,7 +11,7 @@ const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEf
 
 type TreeMap = Map<string, any>
 
-type RootTree = { data: any; treeMap: TreeMap | null }
+type RootTree = TreeMap | null
 
 const RootIdContext = React.createContext<string | null>(null)
 
@@ -74,10 +74,10 @@ export function parseIndexPath(indexPathString: string) {
 export function stringifyTreeCollection(treeCollection: Map<string, any>) {
   let allData = {}
 
-  treeCollection.forEach((tree, treeId) => {
+  treeCollection.forEach((treeMap, treeId) => {
     allData[treeId] = {}
 
-    tree.treeMap?.forEach((data, key) => {
+    treeMap.forEach((data, key) => {
       allData[treeId][key] = data
     })
   })
@@ -386,7 +386,6 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
     rootId: string
   ) => ComputedData
 ) {
-  const data = null
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
   const parentIndexPathString = React.useContext(IndexContext)
   const treeCollection = React.useContext(TreeCollectionContext)
@@ -438,10 +437,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
 
       /** Capture the initial data in render when running on the server. */
       if (isServer) {
-        treeCollection.set(generatedId, {
-          data,
-          treeMap: treeMapRef.current,
-        })
+        treeCollection.set(generatedId, treeMapRef.current)
       }
     } else {
       treeMapRef.current = treeMap
@@ -451,10 +447,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
   /** Update the top-level proxy Map that collects all trees. */
   useIsomorphicLayoutEffect(() => {
     if (isRoot) {
-      treeCollection.set(generatedId, {
-        data,
-        treeMap: treeMapRef.current,
-      })
+      treeCollection.set(generatedId, treeMapRef.current)
     }
 
     return () => {
@@ -462,7 +455,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
         treeCollection.delete(generatedId)
       }
     }
-  }, [isRoot, generatedId, data, treeCollection])
+  }, [isRoot, generatedId, treeCollection])
 
   let childrenToRender = (
     <MaxIndexContext.Provider value={maxIndexPath}>
