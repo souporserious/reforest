@@ -257,22 +257,18 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   const generatedId = React.useId().slice(1, -1)
   const computeDataRef = React.useRef<typeof computeData>(computeData)
 
-  if (treeMap === null) {
-    throw new Error("useTreeData must be a descendant of useTree.")
-  }
-
   useIsomorphicLayoutEffect(() => {
     computeDataRef.current = computeData
   })
 
   /** Capture the initial data when rendering on the server. */
-  if (isServer) {
+  if (isServer && treeMap) {
     treeMap.set(generatedId, Object.assign({ generatedId, indexPathString }, data))
   }
 
   /** Add and delete data in useLayoutEffect on the client. */
   useIsomorphicLayoutEffect(() => {
-    if (data === null) {
+    if (data === null || treeMap === null) {
       return
     }
 
@@ -287,7 +283,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   const isClientWithInitialData = !isServer && initialTreeCollectionIds !== null
   let serverComputedData: ComputedData | null = null
 
-  if (isServer || isClientWithInitialData) {
+  if (treeMap !== null && (isServer || isClientWithInitialData)) {
     serverComputedData = suspend(
       () => {
         return new Promise((resolve) => {
@@ -334,7 +330,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
 
   useIsomorphicLayoutEffect(() => {
-    if (computeData === undefined) {
+    if (computeData === undefined || treeMap === null) {
       return
     }
 
@@ -404,8 +400,8 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
   const treeMapRef = React.useRef<TreeMapContextValue>(null)
   const treeComputedDataRef = React.useRef<TreeComputedDataContextValue | null>(null)
   const contextRootId = React.useContext(RootIdContext)
-  const generatedRootId = React.useId().slice(1, -1)
-  const rootId = contextRootId || generatedRootId
+  const initialRootId = React.useId().slice(1, -1)
+  const generatedId = contextRootId || initialRootId
   const isRoot = treeMap === null
   const childrenCount = React.Children.count(children)
   const maxIndexPath = React.useMemo(
@@ -431,8 +427,8 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
       if (!isServer) {
         const serverData = document.getElementById(DATA_ID)?.innerHTML
 
-        if (rootId && serverData) {
-          const serverComputedData = JSON.parse(serverData)[rootId]
+        if (generatedId && serverData) {
+          const serverComputedData = JSON.parse(serverData)[generatedId]
 
           if (serverComputedData) {
             initialEntries = Object.entries(serverComputedData)
@@ -447,7 +443,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
         computed: null,
         compute: () => {
           const computedData = computeDataRef.current
-            ? computeDataRef.current(treeMapRef.current!, rootId)
+            ? computeDataRef.current(treeMapRef.current!, generatedId)
             : null
 
           treeComputedData!.computed = computedData
@@ -458,7 +454,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
 
       /** Capture the initial data in render when running on the server. */
       if (isServer) {
-        treeCollection.set(rootId, {
+        treeCollection.set(generatedId, {
           data,
           treeMap: treeMapRef.current,
         })
@@ -485,7 +481,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
   /** Update the top-level proxy Map that collects all trees. */
   useIsomorphicLayoutEffect(() => {
     if (isRoot) {
-      treeCollection.set(rootId, {
+      treeCollection.set(generatedId, {
         data,
         treeMap: treeMapRef.current,
       })
@@ -493,10 +489,10 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
 
     return () => {
       if (isRoot) {
-        treeCollection.delete(rootId)
+        treeCollection.delete(generatedId)
       }
     }
-  }, [isRoot, rootId, data, treeCollection])
+  }, [isRoot, generatedId, data, treeCollection])
 
   let childrenToRender = (
     <MaxIndexContext.Provider value={maxIndexPath}>
@@ -521,7 +517,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
 
   if (isRoot) {
     childrenToRender = (
-      <RootIdContext.Provider value={rootId}>
+      <RootIdContext.Provider value={generatedId}>
         <TreeMapContext.Provider value={treeMapRef.current}>
           <TreeComputedDataContext.Provider value={treeComputedDataRef.current}>
             {childrenToRender}
@@ -532,7 +528,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
   }
 
   return {
-    id: rootId,
+    id: generatedId,
     children: childrenToRender,
     map: treeMapRef.current,
     computed: treeComputedDataRef.current,
