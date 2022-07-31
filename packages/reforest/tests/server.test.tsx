@@ -1,6 +1,4 @@
-/**
- * @jest-environment node
- */
+/** @jest-environment node */
 import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
@@ -31,7 +29,7 @@ function render(element: React.ReactNode) {
   })
 }
 
-test("server-side rendering", async () => {
+test("computed data renders on server", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
     const data = useTreeData(
       React.useMemo(() => ({ value }), [value]),
@@ -125,7 +123,7 @@ test("changing rendered elements based on computed data", async () => {
   expect(renderedString).toMatchSnapshot()
 })
 
-test("server-side tree collection", async () => {
+test("tree collection", async () => {
   const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
 
   const renderedString = await render(

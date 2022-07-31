@@ -84,3 +84,13 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
   ],
 }
 `;
+
+exports[`renders and computes layout 1`] = `
+<div>
+  <div
+    style="width: 200px; height: 133.33333333333334px; top: 201px; left: 134.33333333333334px;"
+  >
+    Box
+  </div>
+</div>
+`;

@@ -88,7 +88,9 @@ test("renders a complex list of items with the correct indexes", async () => {
 })
 
 test("renders and computes layout", () => {
-  const { findByText } = render(<App />)
+  const { container, findByText } = render(<App />)
 
   findByText("Box")
+
+  expect(container.firstChild).toMatchSnapshot()
 })
