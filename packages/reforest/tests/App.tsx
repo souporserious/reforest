@@ -133,7 +133,7 @@ function Box({
 export function App() {
   return (
     <React.Suspense fallback={null}>
-      <Grid columns={12} rows={12}>
+      <Grid columns={600} rows={400}>
         <Row>
           <Space />
           <Column>
