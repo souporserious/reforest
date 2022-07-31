@@ -2,7 +2,9 @@ import * as React from "react"
 import { waitFor, render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
-import { useTree, useTreeData, useTreeEffect } from "../../index"
+import { useTree, useTreeData, useTreeEffect } from "../index"
+
+import { App } from "./App"
 
 test("renders a simple list of items with the correct indexes", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
@@ -83,4 +85,10 @@ test("renders a complex list of items with the correct indexes", async () => {
 
     expect(handleTreeUpdate).toMatchSnapshot()
   })
+})
+
+test("renders and computes layout", () => {
+  const { findByText } = render(<App />)
+
+  findByText("Box")
 })

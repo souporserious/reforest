@@ -1,9 +1,12 @@
+/**
+ * @jest-environment node
+ */
 import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
 
-import { createTreeProvider, useTree, useTreeData } from "../../index"
-import { App } from "../App"
+import { createTreeProvider, useTree, useTreeData } from "../index"
+import { App } from "./App"
 
 /** Simple render function to mock what renderToPipeableStream does. */
 function render(element: React.ReactNode) {
