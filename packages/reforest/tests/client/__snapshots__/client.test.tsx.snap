@@ -73,7 +73,6 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
             "value": "pears",
           },
         ],
-        "generatedId": undefined,
       },
     ],
   ],

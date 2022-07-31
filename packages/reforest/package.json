@@ -1,7 +1,7 @@
 {
   "name": "reforest",
-  "version": "0.6.1",
-  "description": "Collect and compute React props seamlessly across the server and client.",
+  "version": "0.6.2",
+  "description": "Collect and compute React render data seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "typings": "dist/index.d.ts",

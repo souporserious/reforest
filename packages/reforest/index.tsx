@@ -37,24 +37,28 @@ export const TreeMapContext = React.createContext<TreeMapContextValue>(null)
 
 TreeMapContext.displayName = "TreeMapContext"
 
-/** Preload available data when first loading client. */
 let initialTreeCollectionIds: string[] | null = null
 
-if (!isServer) {
-  const serverData = document.getElementById(DATA_ID)?.innerHTML
+/** Preloads available data when on the client. */
+export function preloadClientData() {
+  if (!isServer) {
+    const serverData = document.getElementById(DATA_ID)?.innerHTML
 
-  if (serverData) {
-    const treeCollection = JSON.parse(serverData)
+    if (serverData) {
+      const treeCollection = JSON.parse(serverData)
 
-    const initialTreeCollectionEntries = Object.values(treeCollection).flatMap(
-      (tree: Record<string, any>) => Object.entries(tree)
-    )
+      const initialTreeCollectionEntries = Object.values(treeCollection).flatMap(
+        (tree: Record<string, any>) => Object.entries(tree)
+      )
 
-    initialTreeCollectionIds = initialTreeCollectionEntries.map(([id]) => id)
+      initialTreeCollectionIds = initialTreeCollectionEntries.map(([id]) => id)
 
-    initialTreeCollectionEntries.forEach(([, data]) => preload(async () => data, [data.id]))
+      initialTreeCollectionEntries.forEach(([, data]) => preload(async () => data, [data.id]))
+    }
   }
 }
+
+preloadClientData()
 
 /**
  * Parses a numerical dot-separated string as an index path.
@@ -138,7 +142,6 @@ function cleanAndSortTree(tree: any) {
 
     return {
       ...tree.data,
-      generatedId: tree.generatedId,
       children: tree.children.map(cleanAndSortTree),
     }
   }
@@ -148,12 +151,11 @@ function cleanAndSortTree(tree: any) {
 
 /** Builds a tree from a Map of data collected in useTree. */
 export function mapToTree(dataMap: Map<string, any>) {
-  const parsedValues = Array.from(dataMap.entries()).map(([generatedId, data]) => {
+  const parsedValues = Array.from(dataMap.values()).map((data) => {
     const parentIndexPathString = parseIndexPath(data.indexPathString).slice(0, -1).join(".")
 
     return {
       data,
-      generatedId,
       parentId: parentIndexPathString,
       id: data.indexPathString,
     }

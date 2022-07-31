@@ -1,8 +1,6 @@
 # 🌲 reforest
 
-Collect and compute React props seamlessly across the server and client.
-
-[Codesandbox Demo](https://codesandbox.io/s/useindexedchildren-demo-0bpkby)
+Collect and compute React render data seamlessly across the server and client.
 
 > **Note**
 > While digital trees are cool, climate change is affecting real trees at a rapid rate. Please consider planting a tree, starting a garden, or donating to an [organization](https://onetreeplanted.org/).
@@ -34,6 +32,9 @@ When building low-level components in React for accessibility, styling, and anim
 - [Managing Indexed Collections with useMutableSource](https://souporserious.com/managing-indexed-collections-with-usemutablesource/)
 
 ## Usage
+
+> **Warning**
+> The API is still in development and may change without notice. Docs coming soon..
 
 Please note the following example is for demo purposes only and you should use a more robust solution that is fully accessible.
 
