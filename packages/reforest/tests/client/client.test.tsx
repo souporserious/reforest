@@ -46,7 +46,7 @@ test("renders a complex list of items with the correct indexes", async () => {
   function ItemList({ children }: { children: React.ReactNode }) {
     const tree = useTree(children)
 
-    useTreeEffect(tree.treeMap, handleTreeUpdate)
+    useTreeEffect(tree.map, handleTreeUpdate)
 
     return tree.children
   }

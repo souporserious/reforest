@@ -1,3 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`server-side tree collection 1`] = `"{\\"R0\\":{\\"R3H1\\":{\\"indexPathString\\":\\"0\\",\\"type\\":\\"row\\",\\"id\\":null,\\"width\\":\\"auto\\",\\"height\\":\\"auto\\",\\"weight\\":1,\\"children\\":[]}}}"`;

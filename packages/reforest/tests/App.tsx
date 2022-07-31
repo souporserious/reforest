@@ -2,15 +2,14 @@ import * as React from "react"
 import {
   createGrid,
   createColumn,
-  createNode,
+  createRow,
   createSpace,
+  createNode,
   computeLayout,
   flattenLayout,
-  createRow,
-  Node,
 } from "@jsxui/layout"
 
-import { useTree, useTreeData } from "../index"
+import { mapToTree, useTree, useTreeData } from "../index"
 
 function Grid({
   children,
@@ -29,7 +28,23 @@ function Grid({
     () => createGrid({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const tree = useTree(children)
+  const tree = useTree(
+    children,
+    React.useCallback(
+      (treeMap) => {
+        const tree = mapToTree(treeMap)
+        const rootTree = { ...node, children: tree.children }
+        const computedLayout = computeLayout(rootTree)
+        const flattenedLayout = flattenLayout(computedLayout.layout)
+
+        return {
+          computedLayout: computedLayout.layout,
+          flattenedLayout: flattenedLayout,
+        }
+      },
+      [node]
+    )
+  )
 
   return <div style={{ width, height }}>{tree.children}</div>
 }
@@ -100,10 +115,19 @@ function Box({
   height?: number
 }) {
   const node = React.useMemo(() => createNode({ width, height }), [width, height])
+  const data = useTreeData(node, (tree, id) => {
+    const rootLayout = tree.computed?.flattenedLayout
+    const nodeLayout = rootLayout?.children.find((node) => node.generatedId === id)
 
-  useTreeData(node)
+    return {
+      width: nodeLayout?.width,
+      height: nodeLayout?.height,
+      top: nodeLayout?.column,
+      left: nodeLayout?.row,
+    }
+  })
 
-  return <div>{children}</div>
+  return <div style={data?.computed || {}}>{children}</div>
 }
 
 export function App() {

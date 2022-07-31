@@ -1,7 +1,7 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
 import { preload, suspend } from "suspend-react"
-import { subscribe } from "valtio"
+import { proxy, subscribe } from "valtio"
 import { proxyMap } from "valtio/utils"
 
 const DATA_ID = "__REFOREST_DATA__"
@@ -13,6 +13,8 @@ type TreeMap = Map<string, any>
 type RootTree = { data: any; treeMap: TreeMap | null }
 
 const RootIdContext = React.createContext<string | null>(null)
+
+RootIdContext.displayName = "RootIdContext"
 
 const MaxIndexContext = React.createContext<number[]>([])
 
@@ -33,6 +35,15 @@ export type TreeMapContextValue = Map<string, any> | null
 export const TreeMapContext = React.createContext<TreeMapContextValue>(null)
 
 TreeMapContext.displayName = "TreeMapContext"
+
+export type TreeComputedDataContextValue<ComputedData extends any = any> = {
+  computed: ComputedData | null
+  compute: () => void
+}
+
+const TreeComputedDataContext = React.createContext<TreeComputedDataContextValue | null>(null)
+
+TreeComputedDataContext.displayName = "TreeComputedDataContext"
 
 /** Preload available data when first loading client. */
 let initialTreeCollectionIds: string[] | null = null
@@ -129,7 +140,7 @@ export function TreeProvider({
 
 /** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
 function cleanAndSortTree(tree: any) {
-  if (tree.children && tree.children?.length > 0) {
+  if (tree.children?.length > 0) {
     /** Sort children by the index path. */
     tree.children.sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
 
@@ -170,7 +181,7 @@ export function sortMapByIndexPath(treeMap: Map<string, any>) {
   return new Map(sortedEntries)
 }
 
-/** Subscribe to all tree updates. */
+/** Subscribe to tree updates. */
 export function useTreeEffect(
   /** A tree map to subscribe to. Must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
   treeMap: Map<string, any>,
@@ -232,32 +243,40 @@ let globalTimeoutId: ReturnType<typeof setTimeout>
 export function useTreeData<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
   computeData?: (
-    treeMap: Map<string, { indexPathString: string } & Data> | null,
+    tree: {
+      map: Map<string, { generatedId: string; indexPathString: string } & Data> | null
+      computed: any
+    },
     generatedId: string
   ) => ComputedData
 ) {
   const treeMap = React.useContext(TreeMapContext)
+  const treeComputedData = React.useContext(TreeComputedDataContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
   const generatedId = React.useId().slice(1, -1)
   const computeDataRef = React.useRef<typeof computeData>(computeData)
+
+  if (treeMap === null) {
+    throw new Error("useTreeData must be a descendant of useTree.")
+  }
 
   useIsomorphicLayoutEffect(() => {
     computeDataRef.current = computeData
   })
 
   /** Capture the initial data when rendering on the server. */
-  if (isServer && treeMap) {
-    treeMap.set(generatedId, Object.assign({ indexPathString }, data))
+  if (isServer) {
+    treeMap.set(generatedId, Object.assign({ generatedId, indexPathString }, data))
   }
 
   /** Add and delete data in useLayoutEffect on the client. */
   useIsomorphicLayoutEffect(() => {
-    if (data === null || treeMap === null) {
+    if (data === null) {
       return
     }
 
-    treeMap.set(generatedId, Object.assign({ indexPathString }, data))
+    treeMap.set(generatedId, Object.assign({ generatedId, indexPathString }, data))
 
     return () => {
       treeMap.delete(generatedId)
@@ -279,13 +298,20 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
           globalResolves.push(() =>
             resolve(
               computeDataRef.current
-                ? computeDataRef.current(treeMap ? sortMapByIndexPath(treeMap) : null, generatedId)
+                ? computeDataRef.current(
+                    {
+                      map: sortMapByIndexPath(treeMap),
+                      computed: treeComputedData?.computed,
+                    },
+                    generatedId
+                  )
                 : null
             )
           )
 
           /** Push to the end of the event stack to allow all components to initially render. */
           globalTimeoutId = setTimeout(() => {
+            /** Resolve all of the leaf promises now that we have stored and computed all data. */
             globalResolves.forEach((resolve) => resolve())
             globalResolves = []
           })
@@ -308,13 +334,19 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
 
   useIsomorphicLayoutEffect(() => {
-    if (treeMap === null || computeData === undefined) {
+    if (computeData === undefined) {
       return
     }
 
     function computeClientData() {
       setClientComputedData((currentComputedData) => {
-        const computedData = computeData!(treeMap ? sortMapByIndexPath(treeMap) : null, generatedId)
+        const computedData = computeData!(
+          {
+            map: sortMapByIndexPath(treeMap!),
+            computed: treeComputedData?.computed,
+          },
+          generatedId
+        )
 
         if (JSON.stringify(currentComputedData) === JSON.stringify(computedData)) {
           return currentComputedData
@@ -357,15 +389,20 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 }
 
 /** Provide indexes and subscribe to descendant component data. */
-export function useTree<Data extends Record<string, any>>(
+export function useTree<Data extends Record<string, any>, ComputedData extends any>(
   children: React.ReactNode,
-  data: Data | null = null
+  computeData?: (
+    treeMap: Map<string, { generatedId: string; indexPathString: string } & Data>,
+    rootId: string
+  ) => ComputedData
 ) {
+  const data = null
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
   const parentIndexPathString = React.useContext(IndexContext)
   const treeCollection = React.useContext(TreeCollectionContext)
   const treeMap = React.useContext(TreeMapContext)
   const treeMapRef = React.useRef<TreeMapContextValue>(null)
+  const treeComputedDataRef = React.useRef<TreeComputedDataContextValue | null>(null)
   const contextRootId = React.useContext(RootIdContext)
   const generatedRootId = React.useId().slice(1, -1)
   const rootId = contextRootId || generatedRootId
@@ -375,6 +412,15 @@ export function useTree<Data extends Record<string, any>>(
     () => parentMaxIndexPath.concat(childrenCount - 1),
     [childrenCount]
   )
+  const computeDataRef = React.useRef<typeof computeData>(computeData)
+
+  if (computeData && !isRoot) {
+    throw new Error("Computing data is currently only supported in the root useTree hook.")
+  }
+
+  useIsomorphicLayoutEffect(() => {
+    computeDataRef.current = computeData
+  })
 
   /** Initiate this as the Map for index data if this is a top-level call. */
   if (treeMapRef.current === null) {
@@ -396,6 +442,20 @@ export function useTree<Data extends Record<string, any>>(
 
       treeMapRef.current = proxyMap(initialEntries)
 
+      /** Computed data allows leaf useTreeData calls to use a single computed source. */
+      const treeComputedData = proxy<TreeComputedDataContextValue<ComputedData>>({
+        computed: null,
+        compute: () => {
+          const computedData = computeDataRef.current
+            ? computeDataRef.current(treeMapRef.current!, rootId)
+            : null
+
+          treeComputedData!.computed = computedData
+        },
+      })
+
+      treeComputedDataRef.current = treeComputedData
+
       /** Capture the initial data in render when running on the server. */
       if (isServer) {
         treeCollection.set(rootId, {
@@ -408,7 +468,21 @@ export function useTree<Data extends Record<string, any>>(
     }
   }
 
-  /** Update the top-level proxy Map of all index trees. */
+  useIsomorphicLayoutEffect(() => {
+    if (!isRoot || treeMapRef.current === null) {
+      return
+    }
+
+    function handleUpdate() {
+      treeComputedDataRef.current?.compute()
+    }
+
+    handleUpdate()
+
+    return subscribe(treeMapRef.current, handleUpdate)
+  }, [])
+
+  /** Update the top-level proxy Map that collects all trees. */
   useIsomorphicLayoutEffect(() => {
     if (isRoot) {
       treeCollection.set(rootId, {
@@ -449,15 +523,18 @@ export function useTree<Data extends Record<string, any>>(
     childrenToRender = (
       <RootIdContext.Provider value={rootId}>
         <TreeMapContext.Provider value={treeMapRef.current}>
-          {childrenToRender}
+          <TreeComputedDataContext.Provider value={treeComputedDataRef.current}>
+            {childrenToRender}
+          </TreeComputedDataContext.Provider>
         </TreeMapContext.Provider>
       </RootIdContext.Provider>
     )
   }
 
   return {
-    rootId,
+    id: rootId,
     children: childrenToRender,
-    treeMap: treeMapRef.current,
+    map: treeMapRef.current,
+    computed: treeComputedDataRef.current,
   }
 }

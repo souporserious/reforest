@@ -3,6 +3,7 @@ import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
 
 import { createTreeProvider, useTree, useTreeData } from "../../index"
+import { App } from "../App"
 
 /** Simple render function to mock what renderToPipeableStream does. */
 function render(element: React.ReactNode) {
@@ -31,9 +32,9 @@ test("server-side rendering", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
     const data = useTreeData(
       React.useMemo(() => ({ value }), [value]),
-      (treeMap) => {
-        if (treeMap) {
-          return treeMap.size
+      (tree) => {
+        if (tree.map) {
+          return tree.map.size
         }
         return 0
       }
@@ -74,11 +75,11 @@ test("changing rendered elements based on computed data", async () => {
   function Box({ id }: { id: string }) {
     const data = useTreeData(
       React.useMemo(() => ({ id }), [id]),
-      (treeMap, generatedId) => {
+      (tree, generatedId) => {
         const ids = new Set()
         let shouldRender = false
 
-        treeMap?.forEach(({ id }, generatedIdToCompare) => {
+        tree.map?.forEach(({ id }, generatedIdToCompare) => {
           const isSameId = generatedId === generatedIdToCompare
           const hasId = ids.has(id)
 
@@ -119,4 +120,17 @@ test("changing rendered elements based on computed data", async () => {
   )
 
   expect(renderedString).toMatchSnapshot()
+})
+
+test("server-side tree collection", async () => {
+  const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
+
+  const renderedString = await render(
+    <TreeProvider>
+      <App />
+    </TreeProvider>
+  )
+
+  expect(renderedString).toMatchSnapshot()
+  expect(stringifyTreeCollection()).toMatchSnapshot()
 })

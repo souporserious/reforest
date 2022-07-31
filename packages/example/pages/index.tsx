@@ -15,7 +15,7 @@ function Timeline({
   const tree = useTree(childrenProp)
 
   useTreeEffect(
-    tree.treeMap,
+    tree.map,
     (tree) => {
       const ids = new Set()
       let totalDuration = 0
@@ -161,11 +161,11 @@ function Box({
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
 
-  const data = useTreeData(node, (treeMap, generatedId) => {
+  const data = useTreeData(node, (tree, generatedId) => {
     const ids = new Set()
     let shouldRender = false
 
-    treeMap.forEach(({ id }, generatedIdToCompare) => {
+    tree.map.forEach(({ id }, generatedIdToCompare) => {
       const isSameId = generatedId === generatedIdToCompare
       const hasId = ids.has(id)
 

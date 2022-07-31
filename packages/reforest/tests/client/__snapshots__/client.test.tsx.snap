@@ -9,14 +9,17 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
           Object {
             "children": Array [
               Object {
+                "generatedId": "rb",
                 "indexPathString": "0.1",
                 "value": "fuji",
               },
               Object {
+                "generatedId": "rd",
                 "indexPathString": "0.2",
                 "value": "gala",
               },
               Object {
+                "generatedId": "rf",
                 "indexPathString": "0.3",
                 "value": "honeycrisp",
               },
@@ -28,14 +31,17 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
           Object {
             "children": Array [
               Object {
+                "generatedId": "rj",
                 "indexPathString": "1.1",
                 "value": "mandarin",
               },
               Object {
+                "generatedId": "rl",
                 "indexPathString": "1.2",
                 "value": "naval",
               },
               Object {
+                "generatedId": "rn",
                 "indexPathString": "1.3",
                 "value": "tangerine",
               },
@@ -47,14 +53,17 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
           Object {
             "children": Array [
               Object {
+                "generatedId": "rr",
                 "indexPathString": "2.1",
                 "value": "anjou",
               },
               Object {
+                "generatedId": "rt",
                 "indexPathString": "2.2",
                 "value": "asian",
               },
               Object {
+                "generatedId": "rv",
                 "indexPathString": "2.3",
                 "value": "bosc",
               },

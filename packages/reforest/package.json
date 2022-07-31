@@ -1,6 +1,6 @@
 {
   "name": "reforest",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Collect and compute React props seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -47,8 +47,9 @@
     "@jsxui/layout": "^0.1.3",
     "react": "*",
     "react-dom": "*",
-    "tsup": "^6.2.0",
+    "tsup": "^6.2.1",
     "typescript": "*",
+    "use-constant": "^1.1.0",
     "valtio": "^1.6.3"
   }
 }
