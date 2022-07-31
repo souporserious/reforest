@@ -21,6 +21,18 @@ yarn add reforest valtio
 
 When building low-level components in React for accessibility, styling, and animation purposes, the orchestration for everything can become painful for both the library author and the library consumer. In general, the problem boils down to a component needing to use render data from another component[s]. This library aims to solve this problem by managing a tree of data built from other component renders in an easy API that works on the server and client.
 
+## Related
+
+- [use-indexed-children](https://github.com/souporserious/reforest/tree/f728464cc2b576472cf687a37db16e55b8ad9dea) (predecessor)
+
+- [use-item-list](https://github.com/souporserious/use-item-list)
+
+- [use-ref-list](https://github.com/souporserious/use-ref-list)
+
+- [use-roving-index](https://github.com/souporserious/use-roving-index)
+
+- [Managing Indexed Collections with useMutableSource](https://souporserious.com/managing-indexed-collections-with-usemutablesource/)
+
 ## Usage
 
 Please note the following example is for demo purposes only and you should use a more robust solution that is fully accessible.
