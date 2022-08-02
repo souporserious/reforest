@@ -16,7 +16,11 @@ const IndexContext = React.createContext<string | null>(null)
 
 IndexContext.displayName = "IndexContext"
 
-export type TreeStateContextValue = { map: Map<string, any>; computed: any | null } | null
+export type TreeStateContextValue = {
+  map: Map<string, any>
+  computedUpdateCount: number
+  computed: any | null
+} | null
 
 export const TreeStateContext = React.createContext<TreeStateContextValue>(null)
 
@@ -452,15 +456,23 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
     throw new Error("Computing data is currently only supported in the root useTree hook.")
   }
 
-  useIsomorphicLayoutEffect(() => {
-    computeDataRef.current = computeData
-  })
-
   /** Initiate this as the Map for index data if this is a top-level call. */
   if (treeStateRef.current === null) {
     if (isRoot) {
-      treeStateRef.current = proxyWithComputed<{ map: Map<string, any> }, { computed: any }>(
-        { map: proxyMap() },
+      treeStateRef.current = proxyWithComputed<
+        { map: Map<string, any>; computedUpdateCount: number },
+        { computed: any }
+      >(
+        {
+          map: proxyMap(),
+
+          /**
+           * Tracks when computeData updates in order to cause the computed property
+           * to change and pick up the updated computeData callback. This is essentially
+           * a hack since functions can't be stored as proxy state.
+           */
+          computedUpdateCount: 0,
+        },
         {
           computed: (snapshot) => {
             return computeDataRef.current ? computeDataRef.current(snapshot.map, generatedId) : null
@@ -476,6 +488,16 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
       treeStateRef.current = treeState
     }
   }
+
+  /** Sync computeData callback updates to proxy state. */
+  useIsomorphicLayoutEffect(() => {
+    const treeState = treeStateRef.current
+
+    if (isRoot && treeState) {
+      computeDataRef.current = computeData
+      treeState.computedUpdateCount++
+    }
+  }, [computeData])
 
   /** Update the top-level proxy Map that collects all trees. */
   useIsomorphicLayoutEffect(() => {
