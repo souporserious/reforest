@@ -9,67 +9,67 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
           Object {
             "children": Array [
               Object {
-                "generatedId": "rb",
                 "indexPathString": "0.1",
+                "treeId": ":r4:",
                 "value": "fuji",
               },
               Object {
-                "generatedId": "rd",
                 "indexPathString": "0.2",
+                "treeId": ":r5:",
                 "value": "gala",
               },
               Object {
-                "generatedId": "rf",
                 "indexPathString": "0.3",
+                "treeId": ":r6:",
                 "value": "honeycrisp",
               },
             ],
-            "generatedId": "r9",
             "indexPathString": "0",
+            "treeId": ":r3:",
             "value": "apples",
           },
           Object {
             "children": Array [
               Object {
-                "generatedId": "rj",
                 "indexPathString": "1.1",
+                "treeId": ":r8:",
                 "value": "mandarin",
               },
               Object {
-                "generatedId": "rl",
                 "indexPathString": "1.2",
+                "treeId": ":r9:",
                 "value": "naval",
               },
               Object {
-                "generatedId": "rn",
                 "indexPathString": "1.3",
+                "treeId": ":ra:",
                 "value": "tangerine",
               },
             ],
-            "generatedId": "rh",
             "indexPathString": "1",
+            "treeId": ":r7:",
             "value": "apples",
           },
           Object {
             "children": Array [
               Object {
-                "generatedId": "rr",
                 "indexPathString": "2.1",
+                "treeId": ":rc:",
                 "value": "anjou",
               },
               Object {
-                "generatedId": "rt",
                 "indexPathString": "2.2",
+                "treeId": ":rd:",
                 "value": "asian",
               },
               Object {
-                "generatedId": "rv",
                 "indexPathString": "2.3",
+                "treeId": ":re:",
                 "value": "bosc",
               },
             ],
-            "generatedId": "rp",
             "indexPathString": "2",
+            "treeId": ":rb:",
             "value": "pears",
           },
         ],
@@ -87,9 +87,7 @@ exports[`renders a complex list of items with the correct indexes 1`] = `
 
 exports[`renders and computes layout 1`] = `
 <div>
-  <div
-    style="width: 200px; height: 133.33333333333334px; top: 201px; left: 134.33333333333334px;"
-  >
+  <div>
     Box
   </div>
 </div>

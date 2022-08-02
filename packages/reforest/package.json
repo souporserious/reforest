@@ -1,17 +1,18 @@
 {
   "name": "reforest",
-  "version": "0.7.0",
-  "description": "Collect and compute React render data seamlessly across the server and client.",
+  "version": "0.8.0",
+  "description": "Collect ordered React render data seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "typings": "dist/index.d.ts",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
     "prepublishOnly": "pnpm test && pnpm build",
-    "build": "tsup index.tsx --dts --format esm,cjs --legacy-output",
+    "build": "tsup src/index.ts --dts --format esm,cjs --legacy-output",
     "dev": "pnpm build --watch --sourcemap",
     "test": "jest",
     "test:watch": "jest --watch"
@@ -26,7 +27,10 @@
     "accessibility",
     "select",
     "utility",
-    "list"
+    "list",
+    "tree",
+    "node",
+    "store"
   ],
   "author": "Travis Arnold <travis@souporserious.com> (http://souporserious.com)",
   "license": "MIT",
@@ -35,21 +39,19 @@
   },
   "homepage": "https://github.com/souporserious/reforest",
   "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0",
-    "valtio": ">=1.6.0"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "dependencies": {
     "performant-array-to-tree": "^1.11.0",
-    "suspend-react": "^0.0.8"
+    "suspend-react": "^0.0.8",
+    "zustand": "^4.0.0"
   },
   "devDependencies": {
     "@jsxui/layout": "^0.1.3",
     "react": "*",
     "react-dom": "*",
     "tsup": "^6.2.1",
-    "typescript": "*",
-    "use-constant": "^1.1.0",
-    "valtio": "^1.6.3"
+    "typescript": "*"
   }
 }

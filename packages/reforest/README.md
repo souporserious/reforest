@@ -1,6 +1,6 @@
 # 🌲 reforest
 
-Collect and compute React render data seamlessly across the server and client.
+Collect ordered React render data seamlessly across the server and client.
 
 > **Note**
 > While digital trees are cool, climate change is affecting real trees at a rapid rate. Please consider planting a tree, starting a garden, or donating to an [organization](https://onetreeplanted.org/).
@@ -8,16 +8,16 @@ Collect and compute React render data seamlessly across the server and client.
 ## Install
 
 ```bash
-npm install reforest valtio
+npm install reforest
 ```
 
 ```bash
-yarn add reforest valtio
+yarn add reforest
 ```
 
 ## Why?
 
-When building low-level components in React for accessibility, styling, and animation purposes, the orchestration for everything can become painful for both the library author and the library consumer. In general, the problem boils down to a component needing to use render data from another component[s]. This library aims to solve this problem by managing a tree of data built from other component renders in an easy API that works on the server and client.
+When building low-level components in React for accessibility, styling, and animation purposes, the orchestration for everything can become painful for both the library author and consumer. In general, the problem boils down to a component needing to use render data from another component[s]. This library aims to solve this problem by managing a tree of data built from other component renders in an easy API that works on the server and client.
 
 ## Related
 

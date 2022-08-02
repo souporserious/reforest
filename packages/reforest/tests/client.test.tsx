@@ -2,22 +2,24 @@ import * as React from "react"
 import { waitFor, render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
-import { useTree, useTreeData, useTreeEffect } from "../index"
+import { useIndexedChildren, useIndex, useTreeData, useTreeEffect } from "../src"
 
 import { App } from "./App"
 
 test("renders a simple list of items with the correct indexes", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const tree = useTree(children)
-    const data = useTreeData(React.useMemo(() => ({ value }), [value]))
+    const indexedChildren = useIndexedChildren(children)
+    const index = useIndex()
 
-    return <div data-testid={data?.indexPathString}>{tree.children}</div>
+    useTreeData(React.useMemo(() => ({ value }), [value]))
+
+    return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const tree = useTree(children)
+    const indexedChildren = useIndexedChildren(children)
 
-    return <>{tree.children}</>
+    return indexedChildren
   }
 
   await waitFor(() => {
@@ -39,18 +41,20 @@ test("renders a complex list of items with the correct indexes", async () => {
   const handleTreeUpdate = jest.fn()
 
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const tree = useTree(children)
-    const data = useTreeData(React.useMemo(() => ({ value }), [value]))
+    const indexedChildren = useIndexedChildren(children)
+    const index = useIndex()
 
-    return <div data-testid={data?.indexPathString}>{tree.children}</div>
+    useTreeData(React.useMemo(() => ({ value }), [value]))
+
+    return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const tree = useTree(children)
+    const indexedChildren = useIndexedChildren(children)
 
-    useTreeEffect(tree.map, handleTreeUpdate)
+    useTreeEffect(handleTreeUpdate)
 
-    return tree.children
+    return indexedChildren
   }
 
   await waitFor(() => {

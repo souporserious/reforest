@@ -3,7 +3,7 @@ import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
 
-import { createTreeProvider, useTree, useTreeData } from "../index"
+import { createTreeProvider, useComputedData, useIndexedChildren, useTreeData } from "../src"
 import { App } from "./App"
 
 /** Simple render function to mock what renderToPipeableStream does. */
@@ -31,31 +31,29 @@ function render(element: React.ReactNode) {
 
 test("computed data renders on server", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const data = useTreeData(
-      React.useMemo(() => ({ value }), [value]),
-      (tree) => {
-        if (tree.map) {
-          return tree.map.size
-        }
-        return 0
+    const treeId = useTreeData(React.useMemo(() => ({ value }), [value]))
+    const computed = useComputedData((treeMap) => {
+      if (treeMap) {
+        return treeMap.size
       }
-    )
-    const tree = useTree(children)
+      return 0
+    })
+    const indexedChildren = useIndexedChildren(children)
 
     return (
-      <div data-testid={data?.indexPathString}>
-        {data!.computed} {tree.children}
+      <div data-testid={treeId}>
+        {computed} {indexedChildren}
       </div>
     )
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const tree = useTree(children)
+    const indexedChildren = useIndexedChildren(children)
 
-    return tree.children
+    return indexedChildren
   }
 
-  const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
+  const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
   const renderedString = await render(
     <React.Suspense fallback={null}>
       <TreeProvider>
@@ -69,41 +67,39 @@ test("computed data renders on server", async () => {
   )
 
   expect(renderedString).toMatchSnapshot()
-  expect(stringifyTreeCollection()).toMatchSnapshot()
+  expect(stringifyTreeComputedData()).toMatchSnapshot()
 })
 
 test("changing rendered elements based on computed data", async () => {
   function Box({ id }: { id: string }) {
-    const data = useTreeData(
-      React.useMemo(() => ({ id }), [id]),
-      (tree, generatedId) => {
-        const ids = new Set()
-        let shouldRender = false
+    const treeId = useTreeData(React.useMemo(() => ({ id }), [id]))
+    const shouldRender = useComputedData((treeMap) => {
+      const ids = new Set()
+      let shouldRender = false
 
-        tree.map?.forEach(({ id }, generatedIdToCompare) => {
-          const isSameId = generatedId === generatedIdToCompare
-          const hasId = ids.has(id)
+      treeMap?.forEach(({ id }, treeIdToCompare) => {
+        const isSameId = treeId === treeIdToCompare
+        const hasId = ids.has(id)
 
-          if (isSameId) {
-            shouldRender = !hasId
-          }
+        if (isSameId) {
+          shouldRender = !hasId
+        }
 
-          if (!hasId) {
-            ids.add(id)
-          }
-        })
+        if (!hasId) {
+          ids.add(id)
+        }
+      })
 
-        return shouldRender
-      }
-    )
+      return shouldRender
+    })
 
-    return data?.computed ? <div id={id} /> : null
+    return shouldRender ? <div id={id} /> : null
   }
 
   function Parent({ children }: { children: React.ReactNode }) {
-    const tree = useTree(children)
+    const indexedChildren = useIndexedChildren(children)
 
-    return tree.children
+    return indexedChildren
   }
 
   const { TreeProvider } = createTreeProvider()
@@ -124,7 +120,7 @@ test("changing rendered elements based on computed data", async () => {
 })
 
 test("tree collection", async () => {
-  const { TreeProvider, stringifyTreeComputedData, stringifyTreeCollection } = createTreeProvider()
+  const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
 
   const renderedString = await render(
     <TreeProvider>
@@ -133,6 +129,5 @@ test("tree collection", async () => {
   )
 
   expect(renderedString).toMatchSnapshot()
-  expect(stringifyTreeCollection()).toMatchSnapshot()
   expect(stringifyTreeComputedData()).toMatchSnapshot()
 })

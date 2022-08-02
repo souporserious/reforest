@@ -1,6 +1,6 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useTree, useTreeData, useTreeEffect } from "reforest"
+import { useComputedData, useIndexedChildren, useTreeData, useTreeEffect } from "reforest"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
@@ -12,50 +12,51 @@ function Timeline({
   children: React.ReactNode
   scroll?: boolean
 }) {
-  const tree = useTree(childrenProp)
+  const indexedChildren = useIndexedChildren(childrenProp)
 
   useTreeEffect(
-    tree.map,
     (tree) => {
       const ids = new Set()
       let totalDuration = 0
+      const sceneKeyframes = tree.children
+        .flatMap((scene) => {
+          const sequences = flat(scene.children, {
+            getChildren: (node) => node?.children || [],
+          }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
 
-      const sceneKeyframes = tree.children.flatMap((scene) => {
-        const sequences = flat(scene.children, {
-          getChildren: (node) => node?.children || [],
-        }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
-        const keyframes = sequences.flatMap((keyframes) => {
-          return keyframes.map((keyframe) => {
-            const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
-            const styles = {
-              width,
-              height,
-              scale,
-              opacity,
-              backgroundColor,
-              transform: "translate(0px, 0px)",
-            }
-            const options = { duration: scene.duration, at: totalDuration, delay }
-            const hasId = ids.has(id)
+          const keyframes = sequences.flatMap((keyframes) => {
+            return keyframes?.map((keyframe) => {
+              const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+              const styles = {
+                width,
+                height,
+                scale,
+                opacity,
+                backgroundColor,
+                transform: "translate(0px, 0px)",
+              }
+              const options = { duration: scene.duration, at: totalDuration, delay }
+              const hasId = ids.has(id)
 
-            if (hasId) {
-              const bounds = document.getElementById(id)?.getBoundingClientRect()
-              const xOffset = window.scrollX + (bounds?.x || 0)
-              const yOffset = window.scrollY + (bounds?.y || 0)
+              if (hasId) {
+                const bounds = document.getElementById(id)?.getBoundingClientRect()
+                const xOffset = window.scrollX + (bounds?.x || 0)
+                const yOffset = window.scrollY + (bounds?.y || 0)
 
-              styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-            } else {
-              ids.add(id)
-            }
+                styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+              } else {
+                ids.add(id)
+              }
 
-            return [`#${id}`, styles, options]
+              return [`#${id}`, styles, options]
+            })
           })
+
+          totalDuration += scene.duration
+
+          return keyframes
         })
-
-        totalDuration += scene.duration
-
-        return keyframes
-      })
+        .filter(Boolean)
 
       if (sceneKeyframes) {
         const controls = timeline(sceneKeyframes)
@@ -77,7 +78,7 @@ function Timeline({
   return (
     <main style={styles}>
       <TimelineContext.Provider value={{ scroll: scrollProp }}>
-        {tree.children}
+        {indexedChildren}
       </TimelineContext.Provider>
     </main>
   )
@@ -91,16 +92,14 @@ function Scene({
   duration?: number
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
+  const indexedChildren = useIndexedChildren(childrenProp)
   const node = React.useMemo(() => ({ duration }), [duration])
-  const data = useTreeData(node)
-  const tree = useTree(childrenProp)
+
+  useTreeData(node)
 
   if (timelineContextValue?.scroll) {
     return (
-      <section
-        id={data.generatedId}
-        style={{ display: "grid", height: `${100 * (duration + 1)}vh` }}
-      >
+      <section style={{ display: "grid", height: `${100 * (duration + 1)}vh` }}>
         <div
           style={{
             display: "grid",
@@ -110,7 +109,7 @@ function Scene({
             top: 0,
           }}
         >
-          {tree.children}
+          {indexedChildren}
         </div>
       </section>
     )
@@ -118,7 +117,6 @@ function Scene({
 
   return (
     <section
-      id={data.generatedId}
       style={{
         gridArea: "1 / 1",
         display: "grid",
@@ -126,7 +124,7 @@ function Scene({
         height: "100vh",
       }}
     >
-      {tree.children}
+      {indexedChildren}
     </section>
   )
 }
@@ -160,13 +158,13 @@ function Box({
     }),
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
-
-  const data = useTreeData(node, (tree, generatedId) => {
+  const treeId = useTreeData(node)
+  const shouldRender = useComputedData((treeMap) => {
     const ids = new Set()
     let shouldRender = false
 
-    tree.map.forEach(({ id }, generatedIdToCompare) => {
-      const isSameId = generatedId === generatedIdToCompare
+    treeMap.forEach(({ id }, treeIdToCompare) => {
+      const isSameId = treeId === treeIdToCompare
       const hasId = ids.has(id)
 
       if (isSameId) {
@@ -180,7 +178,6 @@ function Box({
 
     return shouldRender
   })
-  const shouldRender = data.computed
 
   if (!shouldRender) {
     return null
