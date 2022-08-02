@@ -239,7 +239,6 @@ export function useTreeEffect(
 ) {
   const onUpdateRef = React.useRef<typeof onUpdate>(onUpdate)
   const cleanupRef = React.useRef<ReturnType<typeof onUpdate> | null>(null)
-  const previousStringifiedTree = React.useRef("")
 
   useIsomorphicLayoutEffect(() => {
     onUpdateRef.current = onUpdate
@@ -247,21 +246,13 @@ export function useTreeEffect(
 
   useIsomorphicLayoutEffect(() => {
     function handleTreeUpdate() {
-      if (onUpdateRef.current) {
-        let treeData = {}
+      let treeData = {}
 
-        treeMap.forEach((data, key) => {
-          treeData[key] = data
-        })
+      treeMap.forEach((data, key) => {
+        treeData[key] = data
+      })
 
-        const nextStringifiedTree = JSON.stringify(treeData)
-
-        if (previousStringifiedTree.current !== nextStringifiedTree) {
-          cleanupRef.current = onUpdateRef.current(mapToTree(treeMap))
-
-          previousStringifiedTree.current = nextStringifiedTree
-        }
-      }
+      cleanupRef.current = onUpdateRef.current(mapToTree(treeMap))
     }
 
     /** Build initial tree once children have rendered. */
