@@ -369,6 +369,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
   /** Listen for store changes and compute props before rendering to the screen on client. */
   const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
+  const previousStringifiedComputedData = React.useRef("")
 
   useIsomorphicLayoutEffect(() => {
     if (computeData === undefined || treeMap === null) {
@@ -377,17 +378,24 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     function computeClientData() {
       setClientComputedData((currentComputedData) => {
-        const computedData = computeData!(
-          {
-            map: sortMapByIndexPath(treeMap!),
-            computed: (treeMap as any)?.computed,
-          },
-          generatedId
-        )
+        const computedTreeData = (treeMap as any)?.computed
 
-        if (JSON.stringify(currentComputedData) === JSON.stringify(computedData)) {
+        if (computedTreeData === undefined) {
           return currentComputedData
         }
+
+        const treeData = {
+          map: sortMapByIndexPath(treeMap!),
+          computed: computedTreeData,
+        }
+        const computedData = computeData!(treeData, generatedId)
+        const nextStringifiedComputedData = JSON.stringify(computedData)
+
+        if (previousStringifiedComputedData.current === nextStringifiedComputedData) {
+          return currentComputedData
+        }
+
+        previousStringifiedComputedData.current = nextStringifiedComputedData
 
         return computedData
       })
