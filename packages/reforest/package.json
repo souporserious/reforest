@@ -36,20 +36,18 @@
   "homepage": "https://github.com/souporserious/reforest",
   "peerDependencies": {
     "react": ">=16.8.0",
-    "react-dom": ">=16.8.0",
-    "valtio": ">=1.6.0"
+    "react-dom": ">=16.8.0"
   },
   "dependencies": {
     "performant-array-to-tree": "^1.11.0",
-    "suspend-react": "^0.0.8"
+    "suspend-react": "^0.0.8",
+    "valtio": "1.6.3"
   },
   "devDependencies": {
     "@jsxui/layout": "^0.1.3",
     "react": "*",
     "react-dom": "*",
     "tsup": "^6.2.1",
-    "typescript": "*",
-    "use-constant": "^1.1.0",
-    "valtio": "^1.6.3"
+    "typescript": "*"
   }
 }
