@@ -33,7 +33,7 @@ function Grid({
     React.useCallback(
       (treeMap) => {
         const tree = mapToTree(treeMap)
-        const rootTree = { ...node, children: tree.children }
+        const rootTree = { ...node, children: tree ? tree.children : [] }
         const computedLayout = computeLayout(rootTree)
         const flattenedLayout = flattenLayout(computedLayout.layout)
 

@@ -15,7 +15,7 @@ function Timeline({
   const tree = useTree(childrenProp)
 
   useTreeEffect(
-    tree.map,
+    tree.state.map,
     (tree) => {
       const ids = new Set()
       let totalDuration = 0
