@@ -1,7 +1,7 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
 import { preload, suspend } from "suspend-react"
-import { subscribe } from "valtio"
+import { ref, subscribe } from "valtio"
 import { proxyMap, proxyWithComputed } from "valtio/utils"
 
 const DATA_ID = "__REFOREST_DATA__"
@@ -317,7 +317,10 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
       return
     }
 
-    treeState.map.set(generatedId, Object.assign({ generatedId, indexPathString }, data))
+    /** Wrap tree data in ref to prevent it from being proxied. */
+    const treeData = ref(Object.assign({ generatedId, indexPathString }, data))
+
+    treeState.map.set(generatedId, treeData)
 
     return () => {
       treeState.map.delete(generatedId)
