@@ -49,13 +49,11 @@ export function getInitialTreeComputedData() {
     }
   }
 
-  return serverEntries
+  return new Map(serverEntries)
 }
 
-const initialTreeComputedData = getInitialTreeComputedData()
-
-export const TreeComputedDataContext = React.createContext<Map<string, any> | null>(
-  initialTreeComputedData.length > 0 ? new Map(initialTreeComputedData) : null
+export const TreeComputedDataContext = React.createContext<Map<string, any>>(
+  getInitialTreeComputedData()
 )
 
 TreeComputedDataContext.displayName = "TreeComputedDataContext"
@@ -151,12 +149,10 @@ export function TreeProvider({
   initialTreeCollectionEntries?: [string, any][]
   initialTreeComputedDataEntries?: [string, any][]
 }) {
-  const treeCollectionContext = React.useContext(TreeCollectionContext)
   const treeCollectionContextValue = React.useRef<Map<string, TreeStateContextValue> | null>(null)
-  const treeComputedDataContext = React.useContext(TreeComputedDataContext)
   const treeComputedDataContextValue = React.useRef<Map<string, any> | null>(null)
 
-  if (treeCollectionContext === null && treeCollectionContextValue.current === null) {
+  if (treeCollectionContextValue.current === null) {
     /** TODO: add support for initial tree collection from script tag */
 
     treeCollectionContextValue.current = proxyMap<string, TreeStateContextValue>(
@@ -164,7 +160,7 @@ export function TreeProvider({
     )
   }
 
-  if (treeComputedDataContext === null && treeComputedDataContextValue.current === null) {
+  if (treeComputedDataContextValue.current === null) {
     const serverEntries = getInitialTreeComputedData()
 
     treeComputedDataContextValue.current = new Map<string, any>(
@@ -173,12 +169,8 @@ export function TreeProvider({
   }
 
   return (
-    <TreeCollectionContext.Provider
-      value={treeCollectionContext || treeCollectionContextValue.current}
-    >
-      <TreeComputedDataContext.Provider
-        value={treeComputedDataContext || treeComputedDataContextValue.current}
-      >
+    <TreeCollectionContext.Provider value={treeCollectionContextValue.current}>
+      <TreeComputedDataContext.Provider value={treeComputedDataContextValue.current}>
         {children}
       </TreeComputedDataContext.Provider>
     </TreeCollectionContext.Provider>
@@ -353,9 +345,9 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
     }, [generatedId]) as ComputedData
 
     /** Store computed data so it can be injected on the server. */
-    treeComputedData?.set(generatedId, serverComputedData)
+    treeComputedData.set(generatedId, serverComputedData)
   } else {
-    serverComputedData = treeComputedData?.get(generatedId)
+    serverComputedData = treeComputedData.get(generatedId)
   }
 
   /** Listen for store changes and compute props before rendering to the screen on client. */
@@ -388,13 +380,21 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
         previousStringifiedComputedData.current = nextStringifiedComputedData
 
+        /** Store computed data so it can be retrieved in useTreeEffect. */
+        treeComputedData.set(generatedId, computedData)
+
         return computedData
       })
     }
 
     computeClientData()
 
-    return subscribe(treeState, computeClientData)
+    const unsubscribe = subscribe(treeState, computeClientData)
+
+    return () => {
+      unsubscribe()
+      treeComputedData.delete(generatedId)
+    }
   }, [computeData, treeState, generatedId])
 
   const computedData = clientComputedData || serverComputedData
