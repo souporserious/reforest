@@ -248,12 +248,7 @@ export function useTreeEffect(
 
   useIsomorphicLayoutEffect(() => {
     function handleTreeUpdate() {
-      let treeData = {}
-
-      treeMap.forEach((data, key) => {
-        treeData[key] = data
-      })
-
+      cleanupRef.current?.()
       cleanupRef.current = onUpdateRef.current(mapToTree(treeMap))
     }
 
@@ -266,6 +261,7 @@ export function useTreeEffect(
     return () => {
       cleanupSubscription()
       cleanupRef.current?.()
+      cleanupRef.current = null
     }
   }, dependencies.concat(treeMap))
 }
