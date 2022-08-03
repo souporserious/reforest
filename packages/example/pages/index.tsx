@@ -1,6 +1,6 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useTree, useTreeData, useTreeEffect } from "reforest"
+import { useTree, useTreeData, useTreeEffect, useGetComputedData } from "reforest"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
@@ -13,6 +13,7 @@ function Timeline({
   scroll?: boolean
 }) {
   const tree = useTree(childrenProp)
+  const getComputedData = useGetComputedData()
 
   useTreeEffect(
     tree.state.map,
@@ -26,7 +27,16 @@ function Timeline({
         }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
         const keyframes = sequences.flatMap((keyframes) => {
           return keyframes.map((keyframe) => {
-            const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+            const {
+              id,
+              generatedId,
+              delay = 0,
+              width,
+              height,
+              scale,
+              backgroundColor,
+              opacity,
+            } = keyframe
             const styles = {
               width,
               height,
@@ -37,6 +47,7 @@ function Timeline({
             }
             const options = { duration: scene.duration, at: totalDuration, delay }
             const hasId = ids.has(id)
+            const computedData = getComputedData(generatedId)
 
             if (hasId) {
               const bounds = document.getElementById(id)?.getBoundingClientRect()

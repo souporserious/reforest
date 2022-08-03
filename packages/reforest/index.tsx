@@ -218,6 +218,16 @@ export function sortMapByIndexPath(treeMap: Map<string, any>) {
   return new Map(sortedEntries)
 }
 
+/** Generates a computed data getter for a generated id. */
+export function useGetComputedData() {
+  const treeComputedData = React.useContext(TreeComputedDataContext)
+
+  return React.useCallback(
+    (generatedId: string) => treeComputedData.get(generatedId),
+    [treeComputedData]
+  )
+}
+
 /** Subscribe to tree updates. */
 export function useTreeEffect(
   /** A tree map to subscribe to. Must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
@@ -364,6 +374,8 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
         const computedTreeData = (treeState as any)?.computed
 
         if (computedTreeData === undefined) {
+          treeComputedData.set(generatedId, currentComputedData)
+
           return currentComputedData
         }
 
@@ -374,14 +386,14 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
         const computedData = computeData!(treeData, generatedId)
         const nextStringifiedComputedData = JSON.stringify(computedData)
 
+        /** Store computed data so it can be retrieved in useTreeEffect. */
+        treeComputedData.set(generatedId, computedData)
+
         if (previousStringifiedComputedData.current === nextStringifiedComputedData) {
           return currentComputedData
         }
 
         previousStringifiedComputedData.current = nextStringifiedComputedData
-
-        /** Store computed data so it can be retrieved in useTreeEffect. */
-        treeComputedData.set(generatedId, computedData)
 
         return computedData
       })
