@@ -49,6 +49,8 @@ function Timeline({
             const hasId = ids.has(id)
             const computedData = getComputedData(generatedId)
 
+            console.log({ generatedId, computedData })
+
             if (hasId) {
               const bounds = document.getElementById(id)?.getBoundingClientRect()
               const xOffset = window.scrollX + (bounds?.x || 0)
