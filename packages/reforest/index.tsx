@@ -382,9 +382,6 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
         const computedData = computeData!(treeData, generatedId)
         const nextStringifiedComputedData = JSON.stringify(computedData)
 
-        /** Store computed data so it can be retrieved in useTreeEffect. */
-        treeComputedData.set(generatedId, computedData)
-
         if (previousStringifiedComputedData.current === nextStringifiedComputedData) {
           return currentComputedData
         }
@@ -401,9 +398,17 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     return () => {
       unsubscribe()
-      treeComputedData.delete(generatedId)
     }
   }, [computeData, treeState, generatedId])
+
+  useIsomorphicLayoutEffect(() => {
+    /** Store computed data so it can be retrieved in useTreeEffect. */
+    treeComputedData.set(generatedId, clientComputedData)
+
+    return () => {
+      treeComputedData.delete(generatedId)
+    }
+  }, [clientComputedData, generatedId])
 
   const computedData = clientComputedData || serverComputedData
 

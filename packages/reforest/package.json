@@ -1,6 +1,6 @@
 {
   "name": "reforest",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "Collect and compute React render data seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
