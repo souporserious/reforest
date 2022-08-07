@@ -11,6 +11,8 @@ import {
 
 import { mapToTree, useTree, useTreeData } from "../index"
 
+const RootNodeContext = React.createContext<any>(null)
+
 function Grid({
   children,
   columns,
@@ -28,25 +30,13 @@ function Grid({
     () => createGrid({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const tree = useTree(
-    children,
-    React.useCallback(
-      (treeMap) => {
-        const tree = mapToTree(treeMap)
-        const rootTree = { ...node, children: tree ? tree.children : [] }
-        const computedLayout = computeLayout(rootTree)
-        const flattenedLayout = flattenLayout(computedLayout.layout)
+  const tree = useTree(children)
 
-        return {
-          computedLayout: computedLayout.layout,
-          flattenedLayout: flattenedLayout,
-        }
-      },
-      [node]
-    )
+  return (
+    <RootNodeContext.Provider value={node}>
+      <div style={{ width, height }}>{tree.children}</div>
+    </RootNodeContext.Provider>
   )
-
-  return <div style={{ width, height }}>{tree.children}</div>
 }
 
 function Column({
@@ -114,18 +104,26 @@ function Box({
   width?: number
   height?: number
 }) {
+  const rootNode = React.useContext(RootNodeContext)
   const node = React.useMemo(() => createNode({ width, height }), [width, height])
-  const data = useTreeData(node, (tree, id) => {
-    const rootLayout = tree.computed?.flattenedLayout
-    const nodeLayout = rootLayout?.children.find((node) => node.generatedId === id)
+  const data = useTreeData(
+    node,
+    (treeMap, id) => {
+      const tree = mapToTree(treeMap)
+      const rootTree = { ...rootNode, children: tree ? tree.children : [] }
+      const computedLayout = computeLayout(rootTree)
+      const flattenedLayout = flattenLayout(computedLayout.layout)
+      const nodeLayout = flattenedLayout?.children.find((node) => (node as any).generatedId === id)
 
-    return {
-      width: nodeLayout?.width,
-      height: nodeLayout?.height,
-      top: nodeLayout?.column,
-      left: nodeLayout?.row,
-    }
-  })
+      return {
+        width: nodeLayout?.width,
+        height: nodeLayout?.height,
+        top: nodeLayout?.column,
+        left: nodeLayout?.row,
+      }
+    },
+    [rootNode]
+  )
 
   return <div style={data?.computed || {}}>{children}</div>
 }

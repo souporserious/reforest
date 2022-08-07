@@ -1,8 +1,8 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
-import { preload, suspend } from "suspend-react"
+import { suspend } from "suspend-react"
 import { ref, subscribe } from "valtio"
-import { proxyMap, proxyWithComputed } from "valtio/utils"
+import { proxyMap } from "valtio/utils"
 
 const DATA_ID = "__REFOREST_DATA__"
 const isServer = typeof window === "undefined"
@@ -16,18 +16,14 @@ const IndexContext = React.createContext<string | null>(null)
 
 IndexContext.displayName = "IndexContext"
 
-export type TreeStateContextValue = {
-  map: Map<string, any>
-  computedUpdateCount: number
-  computed: any | null
-} | null
+export type TreeMapContextValue = Map<string, any> | null
 
-export const TreeStateContext = React.createContext<TreeStateContextValue>(null)
+export const TreeMapContext = React.createContext<TreeMapContextValue>(null)
 
-TreeStateContext.displayName = "TreeStateContext"
+TreeMapContext.displayName = "TreeMapContext"
 
-export const TreeCollectionContext = React.createContext<Map<string, TreeStateContextValue>>(
-  proxyMap<string, TreeStateContextValue>()
+export const TreeCollectionContext = React.createContext<Map<string, TreeMapContextValue>>(
+  proxyMap<string, TreeMapContextValue>()
 )
 
 TreeCollectionContext.displayName = "TreeCollectionContext"
@@ -49,7 +45,7 @@ export function getInitialTreeComputedData() {
     }
   }
 
-  return new Map(serverEntries)
+  return proxyMap(serverEntries)
 }
 
 export const TreeComputedDataContext = React.createContext<Map<string, any>>(
@@ -57,23 +53,6 @@ export const TreeComputedDataContext = React.createContext<Map<string, any>>(
 )
 
 TreeComputedDataContext.displayName = "TreeComputedDataContext"
-
-/** Preloads available data when on the client. */
-export function preloadClientData() {
-  if (!isServer) {
-    const serverData = document.getElementById(DATA_ID)?.innerHTML
-
-    if (serverData) {
-      const treeComputedData = JSON.parse(serverData)
-
-      Object.entries(treeComputedData).forEach(([key, value]) => {
-        preload(async () => value, [key])
-      })
-    }
-  }
-}
-
-preloadClientData()
 
 /**
  * Parses a numerical dot-separated string as an index path.
@@ -89,10 +68,10 @@ export function parseIndexPath(indexPathString: string) {
 export function stringifyTreeCollection(treeCollection: Map<string, any>) {
   let allData = {}
 
-  treeCollection.forEach((treeState, treeId) => {
+  treeCollection.forEach((treeMap, treeId) => {
     allData[treeId] = {}
 
-    treeState.map.forEach((data, key) => {
+    treeMap.forEach((data, key) => {
       allData[treeId][key] = data
     })
   })
@@ -113,8 +92,8 @@ export function stringifyTreeMap(treeMap: Map<string, any>) {
 
 /** Wraps a tree with a Map for gathering indexed data on the server. */
 export function createTreeProvider(initialEntries?: [string, any][]) {
-  const treeCollection = proxyMap<string, TreeStateContextValue>(initialEntries)
-  const treeComputedData = new Map<string, any>()
+  const treeCollection = proxyMap<string, TreeMapContextValue>(initialEntries)
+  const treeComputedData = proxyMap<string, any>()
 
   function TreeProvider(props: { children: React.ReactNode }) {
     return (
@@ -149,13 +128,13 @@ export function TreeProvider({
   initialTreeCollectionEntries?: [string, any][]
   initialTreeComputedDataEntries?: [string, any][]
 }) {
-  const treeCollectionContextValue = React.useRef<Map<string, TreeStateContextValue> | null>(null)
+  const treeCollectionContextValue = React.useRef<Map<string, TreeMapContextValue> | null>(null)
   const treeComputedDataContextValue = React.useRef<Map<string, any> | null>(null)
 
   if (treeCollectionContextValue.current === null) {
     /** TODO: add support for initial tree collection from script tag */
 
-    treeCollectionContextValue.current = proxyMap<string, TreeStateContextValue>(
+    treeCollectionContextValue.current = proxyMap<string, TreeMapContextValue>(
       initialTreeCollectionEntries
     )
   }
@@ -163,7 +142,7 @@ export function TreeProvider({
   if (treeComputedDataContextValue.current === null) {
     const serverEntries = getInitialTreeComputedData()
 
-    treeComputedDataContextValue.current = new Map<string, any>(
+    treeComputedDataContextValue.current = proxyMap<string, any>(
       initialTreeComputedDataEntries || serverEntries
     )
   }
@@ -228,63 +207,22 @@ export function useGetComputedData() {
   )
 }
 
-/** Subscribe to tree updates. */
-export function useTreeEffect(
-  /** A tree map to subscribe to. Must be a [proxyMap](https://valtio.pmnd.rs/docs/utils/proxyMap) from valtio. */
-  treeMap: Map<string, any>,
-
-  /** Updates when any tree data is changed and returns a nested tree array. */
-  onUpdate: (tree: ReturnType<typeof mapToTree>) => void | (() => void),
-
-  /** Dependencies for the effect. */
-  dependencies: any[] = []
-) {
-  const onUpdateRef = React.useRef<typeof onUpdate>(onUpdate)
-  const cleanupRef = React.useRef<ReturnType<typeof onUpdate> | null>(null)
-
-  useIsomorphicLayoutEffect(() => {
-    onUpdateRef.current = onUpdate
-  })
-
-  useIsomorphicLayoutEffect(() => {
-    function handleTreeUpdate() {
-      cleanupRef.current?.()
-      cleanupRef.current = onUpdateRef.current(mapToTree(treeMap))
-    }
-
-    /** Build initial tree once children have rendered. */
-    handleTreeUpdate()
-
-    /** Subscribe to future updates to tree. */
-    const cleanupSubscription = subscribe(treeMap, handleTreeUpdate)
-
-    return () => {
-      cleanupSubscription()
-      cleanupRef.current?.()
-      cleanupRef.current = null
-    }
-  }, dependencies.concat(treeMap))
-}
-
 /** Track initial component renders. */
 let globalResolves: any[] = []
 let globalTimeoutId: ReturnType<typeof setTimeout>
 
 /**
  * Returns the current index and optional computed data based on the closest useTree.
- * Attached data can be retrieved in useTree or useTreeEffect.
  */
 export function useTreeData<Data extends Record<string, any>, ComputedData extends any>(
   data: Data | null = null,
   computeData?: (
-    tree: {
-      map: Map<string, { generatedId: string; indexPathString: string } & Data> | null
-      computed: any
-    },
+    treeMap: Map<string, { generatedId: string; indexPathString: string } & Data>,
     generatedId: string
-  ) => ComputedData
+  ) => ComputedData,
+  dependencies: any[] = []
 ) {
-  const treeState = React.useContext(TreeStateContext)
+  const treeMap = React.useContext(TreeMapContext)
   const treeComputedData = React.useContext(TreeComputedDataContext)
   const maxIndexPath = React.useContext(MaxIndexContext)
   const indexPathString = React.useContext(IndexContext)
@@ -296,31 +234,31 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
   })
 
   /** Capture the initial data when rendering on the server. */
-  if (isServer && treeState) {
-    treeState.map.set(generatedId, Object.assign({ generatedId, indexPathString }, data))
+  if (isServer && treeMap) {
+    treeMap.set(generatedId, Object.assign({ generatedId, indexPathString }, data))
   }
 
   /** Add and delete data in useLayoutEffect on the client. */
   useIsomorphicLayoutEffect(() => {
-    if (data === null || treeState === null) {
+    if (data === null || treeMap === null) {
       return
     }
 
     /** Wrap tree data in ref to prevent it from being proxied. */
     const treeData = ref(Object.assign({ generatedId, indexPathString }, data))
 
-    treeState.map.set(generatedId, treeData)
+    treeMap.set(generatedId, treeData)
 
     return () => {
-      treeState.map.delete(generatedId)
+      treeMap.delete(generatedId)
     }
-  }, [treeState, data, generatedId])
+  }, [treeMap, data])
 
-  /** Use Suspense to re-render the component before committing the final props on the server and hydration **only**. */
+  /** Use Suspense to re-render the component before committing the final props on the server. */
   const isServerWithComputedData = isServer && computeData !== undefined
   let serverComputedData: ComputedData | null = null
 
-  if (treeState !== null && isServerWithComputedData) {
+  if (treeMap !== null && isServerWithComputedData) {
     serverComputedData = suspend(() => {
       return new Promise((resolve) => {
         /** Keep clearing timeout until the last component renders. */
@@ -328,17 +266,7 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
         /** Store all of the promises to compute. */
         globalResolves.push(() =>
-          resolve(
-            computeDataRef.current
-              ? computeDataRef.current(
-                  {
-                    map: sortMapByIndexPath(treeState.map),
-                    computed: (treeState as any)?.computed,
-                  },
-                  generatedId
-                )
-              : null
-          )
+          resolve(computeData ? computeData(sortMapByIndexPath(treeMap), generatedId) : null)
         )
 
         /** Push to the end of the event stack to allow all leaf components to initially render. */
@@ -358,53 +286,27 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
   /** Listen for store changes and compute props before rendering to the screen on client. */
   const [clientComputedData, setClientComputedData] = React.useState<ComputedData | null>(null)
-  const previousStringifiedComputedData = React.useRef("")
 
   useIsomorphicLayoutEffect(() => {
-    if (computeData === undefined || treeState === null) {
+    if (computeDataRef.current === undefined || treeMap === null) {
       return
     }
 
     function computeClientData() {
-      setClientComputedData((currentComputedData) => {
-        const computedTreeData = (treeState as any)?.computed
+      const computedData = computeDataRef.current!(sortMapByIndexPath(treeMap!), generatedId)
 
-        if (computedTreeData === undefined) {
-          treeComputedData.set(generatedId, currentComputedData)
+      treeComputedData.set(generatedId, computedData)
 
-          return currentComputedData
-        }
-
-        const treeData = {
-          map: sortMapByIndexPath(treeState!.map),
-          computed: computedTreeData,
-        }
-        const computedData = computeData!(treeData, generatedId)
-        const nextStringifiedComputedData = JSON.stringify(computedData)
-
-        if (previousStringifiedComputedData.current === nextStringifiedComputedData) {
-          treeComputedData.set(generatedId, computedData)
-
-          return currentComputedData
-        }
-
-        previousStringifiedComputedData.current = nextStringifiedComputedData
-
-        treeComputedData.set(generatedId, computedData)
-
-        return computedData
-      })
+      setClientComputedData(computedData)
     }
 
-    computeClientData()
-
-    const unsubscribe = subscribe(treeState, computeClientData)
+    const unsubscribe = subscribe(treeMap, computeClientData)
 
     return () => {
       unsubscribe()
       treeComputedData.delete(generatedId)
     }
-  }, [computeData, treeState, generatedId])
+  }, dependencies.concat([computeData, treeMap]))
 
   const computedData = clientComputedData || serverComputedData
 
@@ -430,82 +332,45 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
       isEven: index % 2 === 0,
       isOdd: Math.abs(index % 2) === 1,
     }
-  }, [indexPathString, maxIndexPath, treeState, computedData])
+  }, [indexPathString, maxIndexPath, treeMap, computedData])
 }
 
 /** Provide indexes and subscribe to descendant component data. */
 export function useTree<Data extends Record<string, any>, ComputedData extends any>(
-  children: React.ReactNode,
-  computeData?: (
-    treeMap: Map<string, { generatedId: string; indexPathString: string } & Data>,
-    rootId: string
-  ) => ComputedData
+  children: React.ReactNode
 ) {
   const parentMaxIndexPath = React.useContext(MaxIndexContext)
   const parentIndexPathString = React.useContext(IndexContext)
   const treeCollection = React.useContext(TreeCollectionContext)
-  const treeState = React.useContext(TreeStateContext)
-  const treeStateRef = React.useRef<TreeStateContextValue>(null)
+  const treeComputedData = React.useContext(TreeComputedDataContext)
+  const treeMap = React.useContext(TreeMapContext)
+  const treeMapRef = React.useRef<TreeMapContextValue>(null)
   const generatedId = React.useId().slice(1, -1)
-  const isRoot = treeState === null
+  const isRoot = treeMap === null
   const childrenCount = React.Children.count(children)
   const maxIndexPath = React.useMemo(
     () => parentMaxIndexPath.concat(childrenCount - 1),
     [childrenCount]
   )
-  const computeDataRef = React.useRef<typeof computeData>(computeData)
-
-  if (computeData && !isRoot) {
-    throw new Error("Computing data is currently only supported in the root useTree hook.")
-  }
 
   /** Initiate this as the Map for index data if this is a top-level call. */
-  if (treeStateRef.current === null) {
+  if (treeMapRef.current === null) {
     if (isRoot) {
-      treeStateRef.current = proxyWithComputed<
-        { map: Map<string, any>; computedUpdateCount: number },
-        { computed: any }
-      >(
-        {
-          map: proxyMap(),
-
-          /**
-           * Tracks when computeData updates in order to cause the computed property
-           * to change and pick up the updated computeData callback. This is essentially
-           * a hack since functions can't be stored as proxy state.
-           */
-          computedUpdateCount: 0,
-        },
-        {
-          computed: (snapshot) => {
-            return computeDataRef.current ? computeDataRef.current(snapshot.map, generatedId) : null
-          },
-        }
-      )
+      treeMapRef.current = proxyMap()
 
       /** Capture the initial data in render when running on the server. */
       if (isServer) {
-        treeCollection.set(generatedId, treeStateRef.current)
+        treeCollection.set(generatedId, treeMapRef.current)
       }
     } else {
-      treeStateRef.current = treeState
+      treeMapRef.current = treeMap
     }
   }
-
-  /** Sync computeData callback updates to proxy state. */
-  useIsomorphicLayoutEffect(() => {
-    const treeState = treeStateRef.current
-
-    if (isRoot && treeState) {
-      computeDataRef.current = computeData
-      treeState.computedUpdateCount++
-    }
-  }, [computeData])
 
   /** Update the top-level proxy Map that collects all trees. */
   useIsomorphicLayoutEffect(() => {
     if (isRoot) {
-      treeCollection.set(generatedId, treeStateRef.current)
+      treeCollection.set(generatedId, treeMapRef.current)
     }
 
     return () => {
@@ -513,7 +378,7 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
         treeCollection.delete(generatedId)
       }
     }
-  }, [isRoot, generatedId, treeCollection])
+  }, [isRoot, treeCollection])
 
   let childrenToRender = (
     <MaxIndexContext.Provider value={maxIndexPath}>
@@ -538,15 +403,30 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
 
   if (isRoot) {
     childrenToRender = (
-      <TreeStateContext.Provider value={treeStateRef.current}>
+      <TreeMapContext.Provider value={treeMapRef.current}>
         {childrenToRender}
-      </TreeStateContext.Provider>
+      </TreeMapContext.Provider>
     )
   }
 
   return {
     id: generatedId,
     children: childrenToRender,
-    state: treeStateRef.current,
+    map: treeMapRef.current!,
+    subscribe: React.useCallback((callback) => {
+      let cleanup: null | (() => void) = null
+      const handleUpdate = () => {
+        cleanup?.()
+        cleanup = callback(mapToTree(treeMapRef.current!))
+      }
+      const unsubscribe = subscribe(treeComputedData, handleUpdate)
+
+      handleUpdate()
+
+      return () => {
+        cleanup?.()
+        unsubscribe()
+      }
+    }, []),
   }
 }

@@ -1,7 +1,10 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useTree, useTreeData, useTreeEffect, useGetComputedData } from "reforest"
+import { useTree, useTreeData, useGetComputedData } from "reforest"
 import { scroll, timeline } from "motion"
+
+const isServer = typeof window === "undefined"
+const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
@@ -15,13 +18,12 @@ function Timeline({
   const tree = useTree(childrenProp)
   const getComputedData = useGetComputedData()
 
-  useTreeEffect(
-    tree.state.map,
-    (tree) => {
+  useIsomorphicLayoutEffect(() => {
+    return tree.subscribe((treeArray) => {
       const ids = new Set()
       let totalDuration = 0
 
-      const sceneKeyframes = tree.children.flatMap((scene) => {
+      const sceneKeyframes = treeArray.children.flatMap((scene) => {
         const sequences = flat(scene.children, {
           getChildren: (node) => node?.children || [],
         }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
@@ -70,6 +72,8 @@ function Timeline({
         return keyframes
       })
 
+      console.log(sceneKeyframes)
+
       if (sceneKeyframes) {
         const controls = timeline(sceneKeyframes)
 
@@ -77,9 +81,8 @@ function Timeline({
           return scroll(controls)
         }
       }
-    },
-    [scrollProp]
-  )
+    })
+  }, [scrollProp])
 
   const styles = {
     display: "grid",
@@ -174,11 +177,11 @@ function Box({
     [id, width, height, backgroundColor, opacity, scale, delay]
   )
 
-  const data = useTreeData(node, (tree, generatedId) => {
+  const data = useTreeData(node, (treeMap, generatedId) => {
     const ids = new Set()
     let shouldRender = false
 
-    tree.map.forEach(({ id }, generatedIdToCompare) => {
+    treeMap.forEach(({ id }, generatedIdToCompare) => {
       const isSameId = generatedId === generatedIdToCompare
       const hasId = ids.has(id)
 
