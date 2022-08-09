@@ -1,6 +1,6 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useComputedData, useIndexedChildren, useTreeData, useTreeEffect } from "reforest"
+import { useComputedData, useTree, useTreeData, useTreeSnapshot } from "reforest"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
@@ -12,62 +12,65 @@ function Timeline({
   children: React.ReactNode
   scroll?: boolean
 }) {
-  const indexedChildren = useIndexedChildren(childrenProp)
+  const tree = useTree(childrenProp)
+  // const treeSnapshot = useTreeSnapshot(tree.state)
 
-  useTreeEffect(
-    (tree) => {
-      const ids = new Set()
-      let totalDuration = 0
-      const sceneKeyframes = tree.children
-        .flatMap((scene) => {
-          const sequences = flat(scene.children, {
-            getChildren: (node) => node?.children || [],
-          }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+  // React.useEffect(() => {
+  //   const ids = new Set()
+  //   let totalDuration = 0
 
-          const keyframes = sequences.flatMap((keyframes) => {
-            return keyframes?.map((keyframe) => {
-              const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
-              const styles = {
-                width,
-                height,
-                scale,
-                opacity,
-                backgroundColor,
-                transform: "translate(0px, 0px)",
-              }
-              const options = { duration: scene.duration, at: totalDuration, delay }
-              const hasId = ids.has(id)
+  //   if (treeSnapshot.tree === undefined) {
+  //     return
+  //   }
 
-              if (hasId) {
-                const bounds = document.getElementById(id)?.getBoundingClientRect()
-                const xOffset = window.scrollX + (bounds?.x || 0)
-                const yOffset = window.scrollY + (bounds?.y || 0)
+  //   const sceneKeyframes = treeSnapshot.tree.children
+  //     .flatMap((scene) => {
+  //       const sequences = flat(scene.children, {
+  //         getChildren: (node) => node?.children || [],
+  //       }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
 
-                styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-              } else {
-                ids.add(id)
-              }
+  //       const keyframes = sequences.flatMap((keyframes) => {
+  //         return keyframes?.map((keyframe) => {
+  //           const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+  //           const styles = {
+  //             width,
+  //             height,
+  //             scale,
+  //             opacity,
+  //             backgroundColor,
+  //             transform: "translate(0px, 0px)",
+  //           }
+  //           const options = { duration: scene.duration, at: totalDuration, delay }
+  //           const hasId = ids.has(id)
 
-              return [`#${id}`, styles, options]
-            })
-          })
+  //           if (hasId) {
+  //             const bounds = document.getElementById(id)?.getBoundingClientRect()
+  //             const xOffset = window.scrollX + (bounds?.x || 0)
+  //             const yOffset = window.scrollY + (bounds?.y || 0)
 
-          totalDuration += scene.duration
+  //             styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+  //           } else {
+  //             ids.add(id)
+  //           }
 
-          return keyframes
-        })
-        .filter(Boolean)
+  //           return [`#${id}`, styles, options]
+  //         })
+  //       })
 
-      if (sceneKeyframes) {
-        const controls = timeline(sceneKeyframes)
+  //       totalDuration += scene.duration
 
-        if (scrollProp && controls.pause) {
-          return scroll(controls)
-        }
-      }
-    },
-    [scrollProp]
-  )
+  //       return keyframes
+  //     })
+  //     .filter(Boolean)
+
+  //   if (sceneKeyframes) {
+  //     const controls = timeline(sceneKeyframes)
+
+  //     if (scrollProp && controls.pause) {
+  //       return scroll(controls)
+  //     }
+  //   }
+  // }, [scrollProp, treeSnapshot])
 
   const styles = {
     display: "grid",
@@ -78,7 +81,7 @@ function Timeline({
   return (
     <main style={styles}>
       <TimelineContext.Provider value={{ scroll: scrollProp }}>
-        {indexedChildren}
+        {tree.children}
       </TimelineContext.Provider>
     </main>
   )
@@ -92,7 +95,7 @@ function Scene({
   duration?: number
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
-  const indexedChildren = useIndexedChildren(childrenProp)
+  const tree = useTree(childrenProp)
   const node = React.useMemo(() => ({ duration }), [duration])
 
   useTreeData(node)
@@ -109,7 +112,7 @@ function Scene({
             top: 0,
           }}
         >
-          {indexedChildren}
+          {tree.children}
         </div>
       </section>
     )
@@ -124,7 +127,7 @@ function Scene({
         height: "100vh",
       }}
     >
-      {indexedChildren}
+      {tree.children}
     </section>
   )
 }
@@ -156,7 +159,7 @@ function Box({
       scale,
       delay,
     }),
-    [id, width, height, backgroundColor, opacity, scale, delay]
+    []
   )
   const treeId = useTreeData(node)
   const shouldRender = useComputedData((treeMap) => {

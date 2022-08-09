@@ -1,117 +1,94 @@
 import * as React from "react"
-import create from "zustand"
+import { proxy, useSnapshot } from "valtio"
+import { proxyMap, proxyWithComputed } from "valtio/utils"
+import memoize from "proxy-memoize"
 
-import { useIndex } from "./use-indexed-children"
-import { isServer, mapToTree, useIsomorphicLayoutEffect } from "./utils"
+import { TreeStateContext } from "./contexts"
+import { useIndex, useIndexedChildren } from "./use-indexed-children"
+import { mapToTree, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
 
-let globalTimeoutId: ReturnType<typeof setTimeout>
-
-/** Global store that manages all tree state. */
-export const useTreeStore = create<{
-  needsUpdate: boolean
-  treeMap: Map<string, any>
-  subscribeTreeData: (key: string, value: any) => () => void
-  clearTreeData: () => void
-}>((set, get) => ({
-  needsUpdate: false,
-  treeMap: new Map(),
-  subscribeTreeData: (id, data) => {
-    const { treeMap, needsUpdate } = get()
-
-    treeMap.set(id, data)
-
-    /** Keep clearing timeout until the last hook renders. */
-    clearTimeout(globalTimeoutId)
-
-    if (needsUpdate === false) {
-      set({ needsUpdate: true })
-    }
-
-    globalTimeoutId = setTimeout(() => {
-      set({ needsUpdate: false })
-    })
-
-    return () => {
-      treeMap.delete(id)
-    }
-  },
-  clearTreeData: () => {
-    set({ treeMap: new Map() })
-  },
-}))
-
-/**
- * Subscribes data to the global tree context and returns a unique id that can
- * be used for fetching computed data in useComputedData.
- */
-export function useTreeData(data: any) {
-  const treeId = React.useId()
-  const index = useIndex()
-  const indexPathString = index ? index.indexPathString : null
-
-  /** Capture the initial data when rendering on the server. */
-  if (isServer) {
-    useTreeStore
-      .getState()
-      .subscribeTreeData(treeId, Object.assign({ treeId, indexPathString }, data))
-  }
+export function useTree<ComputedData extends any>(
+  children: React.ReactNode,
+  computeData?: (snapshot: any) => ComputedData
+) {
+  const treeStateContext = React.useContext(TreeStateContext)
+  const treeStateRef = React.useRef<any>(null)
+  const computeDataRef = React.useRef<typeof computeData>(computeData)
 
   useIsomorphicLayoutEffect(() => {
-    return useTreeStore
-      .getState()
-      .subscribeTreeData(treeId, Object.assign({ treeId, indexPathString }, data))
-  }, [treeId, indexPathString, data])
+    computeDataRef.current = computeData
+  })
+
+  if (treeStateContext === null && treeStateRef.current === null) {
+    const state = proxyWithComputed<
+      {
+        treeMap: Map<string, any>
+        subscribeTreeData: (key: string, value: any) => () => void
+      },
+      { computed: ComputedData | null }
+    >(
+      {
+        treeMap: proxyMap<string, any>(),
+        subscribeTreeData: (key: string, value: any) => {
+          state.treeMap.set(key, value)
+          return () => {
+            state.treeMap.delete(key)
+          }
+        },
+      },
+      {
+        computed: memoize((snapshot: any) => {
+          return computeDataRef.current ? computeDataRef.current(snapshot.treeMap) : null
+        }),
+      }
+    )
+
+    treeStateRef.current = state
+  } else {
+    treeStateRef.current = treeStateContext
+  }
+
+  const childrenToRender = (
+    <TreeStateContext.Provider value={treeStateRef.current}>
+      {useIndexedChildren(children)}
+    </TreeStateContext.Provider>
+  )
+
+  return {
+    children: childrenToRender,
+    state: treeStateRef.current,
+  }
+}
+
+export function useTreeData(data: any) {
+  const treeState = React.useContext(TreeStateContext)
+  const treeId = React.useId()
+  const index = useIndex()
+
+  useIsomorphicLayoutEffect(() => {
+    if (treeState === null) {
+      return
+    }
+
+    return treeState.subscribeTreeData(
+      treeId,
+      Object.assign({ treeId, indexPathString: index?.indexPathString }, data)
+    )
+  }, [treeState, treeId, index, data])
 
   return treeId
 }
 
-/** Subscribe to tree updates. */
-export function useTreeEffect(
-  /** Updates when any tree data is changed. */
-  onUpdate: (tree: ReturnType<typeof mapToTree>) => void | (() => void),
+const noopProxy = proxy({})
 
-  /** Dependencies for the effect. */
-  dependencies: any[] = []
-) {
-  const onUpdateRef = React.useRef<typeof onUpdate>(onUpdate)
-  const cleanupRef = React.useRef<ReturnType<typeof onUpdate> | null>(null)
-  const previousStringifiedTree = React.useRef("")
+export function useTreeSnapshot(treeState: ReturnType<typeof useTree>["state"] | null) {
+  const snapshot = useSnapshot(treeState || noopProxy)
 
-  useIsomorphicLayoutEffect(() => {
-    onUpdateRef.current = onUpdate
-  })
-
-  useIsomorphicLayoutEffect(() => {
-    function handleTreeUpdate(state: any) {
-      let treeData = {}
-
-      state.treeMap.forEach((data, key) => {
-        treeData[key] = data
-      })
-
-      const nextStringifiedTree = JSON.stringify(treeData)
-
-      if (previousStringifiedTree.current !== nextStringifiedTree) {
-        const tree = mapToTree(state.treeMap)
-
-        if (tree) {
-          cleanupRef.current = onUpdateRef.current(tree)
-        }
-
-        previousStringifiedTree.current = nextStringifiedTree
-      }
-    }
-
-    /** Build initial tree once children have rendered. */
-    handleTreeUpdate(useTreeStore.getState())
-
-    /** Subscribe to future updates to tree. */
-    const cleanupSubscription = useTreeStore.subscribe(handleTreeUpdate)
-
-    return () => {
-      cleanupSubscription()
-      cleanupRef.current?.()
-      previousStringifiedTree.current = ""
-    }
-  }, dependencies)
+  return React.useMemo(
+    () => ({
+      map: snapshot.treeMap ? sortMapByIndexPath(snapshot.treeMap) : new Map(),
+      tree: snapshot.treeMap ? mapToTree(snapshot.treeMap) : [],
+    }),
+    [snapshot]
+  )
 }

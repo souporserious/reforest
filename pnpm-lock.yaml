@@ -66,16 +66,20 @@ importers:
     specifiers:
       '@jsxui/layout': ^0.1.3
       performant-array-to-tree: ^1.11.0
+      proxy-memoize: ^1.0.0
       react: '*'
       react-dom: '*'
       suspend-react: ^0.0.8
       tsup: ^6.2.1
       typescript: '*'
-      zustand: ^4.0.0
+      use-constant: ^1.1.1
+      valtio: ^1.6.3
     dependencies:
       performant-array-to-tree: 1.11.0
+      proxy-memoize: 1.1.0
       suspend-react: 0.0.8_react@18.2.0
-      zustand: 4.0.0_react@18.2.0
+      use-constant: 1.1.1_react@18.2.0
+      valtio: 1.6.3_react@18.2.0
     devDependencies:
       '@jsxui/layout': 0.1.3
       react: 18.2.0
@@ -3303,6 +3307,16 @@ packages:
       sisteransi: 1.0.5
     dev: true
 
+  /proxy-compare/2.2.0:
+    resolution: {integrity: sha512-hEtMJevUmOByZCTw1NRUVaWWHCGJLO0ogizpey8yX6zMPolDe8YVa+PHgMOTiZuyUkFj+hMKs/1UaM0+ZkuvgA==}
+    dev: false
+
+  /proxy-memoize/1.1.0:
+    resolution: {integrity: sha512-Qfo/Bkeb9zIIJ8w5e9tzc284hl84Jc4EwZLaAPU/GfzOiMYFz6Mf8R/IPEYuo+q6672IRPscNnjksnPyoSwlZA==}
+    dependencies:
+      proxy-compare: 2.2.0
+    dev: false
+
   /psl/1.9.0:
     resolution: {integrity: sha512-E/ZsdU4HLs/68gYzgGTkMicWTLPdAftJLfJFlLUAAKZGkStNU72sZjT66SnMDVOfOWY/YAoiD7Jxa9iHvngcag==}
     dev: true
@@ -3933,6 +3947,14 @@ packages:
       picocolors: 1.0.0
     dev: true
 
+  /use-constant/1.1.1_react@18.2.0:
+    resolution: {integrity: sha512-sy2ttlE4kuAnNbp2P6a5aTZiGYwsZojkqaGZ31yDDjIurteUS8GOcYiPGmJ3y/LHOHkdazDdVRBZPzH3RZHffA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      react: 18.2.0
+    dev: false
+
   /use-sync-external-store/1.2.0_react@18.2.0:
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
@@ -3949,6 +3971,35 @@ packages:
       '@types/istanbul-lib-coverage': 2.0.4
       convert-source-map: 1.8.0
     dev: true
+
+  /valtio/1.6.3_react@18.2.0:
+    resolution: {integrity: sha512-ySg2q5nFFSY0zSm/a/sxEGHshWGGvelo4m4y/oAlO92fuXZ9WHSi0J214P3ZDjDiveGp08wck0qJZcA2ubEj+Q==}
+    engines: {node: '>=12.7.0'}
+    peerDependencies:
+      '@babel/helper-module-imports': '>=7.12'
+      '@babel/types': '>=7.13'
+      aslemammad-vite-plugin-macro: '>=1.0.0-alpha.1'
+      babel-plugin-macros: '>=3.0'
+      react: '>=16.8'
+      vite: '>=2.8.6'
+    peerDependenciesMeta:
+      '@babel/helper-module-imports':
+        optional: true
+      '@babel/types':
+        optional: true
+      aslemammad-vite-plugin-macro:
+        optional: true
+      babel-plugin-macros:
+        optional: true
+      react:
+        optional: true
+      vite:
+        optional: true
+    dependencies:
+      proxy-compare: 2.2.0
+      react: 18.2.0
+      use-sync-external-store: 1.2.0_react@18.2.0
+    dev: false
 
   /w3c-hr-time/1.0.2:
     resolution: {integrity: sha512-z8P5DvDNjKDoFIHK7q8r8lackT6l+jo/Ye3HOle7l9nICP9lf1Ci25fy9vHd0JOWewkIFzXIEig3TdKT7JQ5fQ==}
@@ -4106,19 +4157,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-  /zustand/4.0.0_react@18.2.0:
-    resolution: {integrity: sha512-OrsfQTnRXF1LZ9/vR/IqN9ws5EXUhb149xmPjErZnUrkgxS/gAHGy2dPNIVkVvoxrVe1sIydn4JjF0dYHmGeeQ==}
-    engines: {node: '>=12.7.0'}
-    peerDependencies:
-      immer: '>=9.0'
-      react: '>=16.8'
-    peerDependenciesMeta:
-      immer:
-        optional: true
-      react:
-        optional: true
-    dependencies:
-      react: 18.2.0
-      use-sync-external-store: 1.2.0_react@18.2.0
-    dev: false

@@ -1,4 +1,6 @@
 import * as React from "react"
+import { proxyMap, proxyWithComputed } from "valtio/utils"
+import memoize from "proxy-memoize"
 
 import { DATA_ID, isServer } from "./utils"
 
@@ -35,3 +37,12 @@ export const ComputedDataContext = React.createContext<Map<string, any> | null>(
 )
 
 ComputedDataContext.displayName = "ComputedDataContext"
+
+export type TreeStateContextValue<ComputedData extends any = any> = {
+  treeMap: Map<string, any>
+  subscribeTreeData: (key: string, value: any) => () => void
+} & {
+  computed: ComputedData | null
+}
+
+export const TreeStateContext = React.createContext<TreeStateContextValue | null>(null)

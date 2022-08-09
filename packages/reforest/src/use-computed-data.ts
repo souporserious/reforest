@@ -1,9 +1,8 @@
 import * as React from "react"
 import { suspend } from "suspend-react"
-import shallow from "zustand/shallow"
+import { useSnapshot } from "valtio"
 
-import { ComputedDataContext } from "./contexts"
-import { useTreeStore } from "./use-tree"
+import { ComputedDataContext, TreeStateContext } from "./contexts"
 import { isServer, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
 
 /** Track initial component renders. */
@@ -14,29 +13,34 @@ let globalTimeoutId: ReturnType<typeof setTimeout>
 export function useComputedData<ComputedData extends any>(
   computeData: (
     treeMap: Map<string, { generatedId: string; indexPathString: string } & Record<string, any>>
-  ) => ComputedData
+  ) => ComputedData,
+  dependencies: any[] = []
 ) {
+  const treeState = React.useContext(TreeStateContext)
   const treeComputedData = React.useContext(ComputedDataContext)
   const generatedId = React.useId()
-  const computeDataRef = React.useRef(computeData)
 
-  useIsomorphicLayoutEffect(() => {
-    computeDataRef.current = computeData
-  })
+  if (treeState === null) {
+    throw new Error("useComputedData must be used within a component that uses useTree.")
+  }
 
   /** Use Suspense to re-render the component before committing the final props on the server. */
+  const isServerWithComputedData = isServer && computeData !== undefined
   let serverComputedData: any = null
 
-  if (isServer) {
+  if (isServerWithComputedData) {
     serverComputedData = suspend(() => {
       return new Promise((resolve) => {
         /** Keep clearing timeout until the last component renders. */
         clearTimeout(globalTimeoutId)
 
         /** Store all of the promises to compute. */
-        globalResolves.push(() =>
-          resolve(computeData(sortMapByIndexPath(useTreeStore.getState().treeMap)))
-        )
+        globalResolves.push(() => {
+          const sortedTreeMap = sortMapByIndexPath(treeState.treeMap)
+          const computedData = computeData(sortedTreeMap)
+
+          resolve(computedData)
+        })
 
         /** Push to the end of the event stack to allow all leaf components to initially render. */
         globalTimeoutId = setTimeout(() => {
@@ -53,9 +57,18 @@ export function useComputedData<ComputedData extends any>(
     serverComputedData = treeComputedData?.get(generatedId)
   }
 
-  const clientComputedData = useTreeStore((state) => {
-    return computeDataRef.current ? computeDataRef.current(sortMapByIndexPath(state.treeMap)) : null
-  }, shallow)
+  const snapshot = useSnapshot(treeState)
+  const clientComputedData = React.useMemo(
+    () => (computeData ? computeData(sortMapByIndexPath(snapshot.treeMap)) : null),
+    dependencies.concat(snapshot)
+  )
+
+  useIsomorphicLayoutEffect(() => {
+    treeComputedData?.set(generatedId, clientComputedData)
+    return () => {
+      treeComputedData?.delete(generatedId)
+    }
+  }, [clientComputedData, generatedId])
 
   return clientComputedData || serverComputedData
 }
