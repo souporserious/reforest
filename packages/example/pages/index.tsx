@@ -49,9 +49,10 @@ function Timeline({
             }
             const options = { duration: scene.duration, at: totalDuration, delay }
             const hasId = ids.has(id)
+            const parsedId = id || generatedId
             const computedData = getComputedData(generatedId)
 
-            console.log({ generatedId, computedData })
+            console.log("subscribe computed: ", { generatedId, computedData })
 
             if (hasId) {
               const bounds = document.getElementById(id)?.getBoundingClientRect()
@@ -63,7 +64,7 @@ function Timeline({
               ids.add(id)
             }
 
-            return [`#${id}`, styles, options]
+            return [`#${parsedId}`, styles, options]
           })
         })
 
@@ -71,8 +72,6 @@ function Timeline({
 
         return keyframes
       })
-
-      console.log(sceneKeyframes)
 
       if (sceneKeyframes) {
         const controls = timeline(sceneKeyframes)
@@ -179,13 +178,13 @@ function Box({
 
   const data = useTreeData(node, (treeMap, generatedId) => {
     const ids = new Set()
-    let shouldRender = false
+    let shouldRender = true
 
     treeMap.forEach(({ id }, generatedIdToCompare) => {
       const isSameId = generatedId === generatedIdToCompare
       const hasId = ids.has(id)
 
-      if (isSameId) {
+      if (id && isSameId) {
         shouldRender = !hasId
       }
 
@@ -197,6 +196,7 @@ function Box({
     return shouldRender
   })
   const shouldRender = data.computed
+  const parsedId = id || data.generatedId
 
   if (!shouldRender) {
     return null
@@ -204,7 +204,7 @@ function Box({
 
   return (
     <div
-      id={id}
+      id={parsedId}
       style={{
         width,
         height,
@@ -229,6 +229,7 @@ export default function App() {
       <Timeline scroll={scroll}>
         <Scene duration={2}>
           <Box id="box-1" width="80vw" height="60vh" backgroundColor="blue" />
+          <Box width="10vw" height="10vh" backgroundColor="pink" />
         </Scene>
         <Scene duration={3}>
           <Box id="box-1" width="70vw" height="50vh" backgroundColor="darkblue" />

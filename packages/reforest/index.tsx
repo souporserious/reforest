@@ -48,6 +48,12 @@ export function getInitialTreeComputedData() {
   return proxyMap(serverEntries)
 }
 
+/**
+ * Store computed data to clear in parent useEffect. This makes sure computed data
+ * can be accessed before being cleared between renders.
+ */
+const computedDataToClear: Array<() => void> = []
+
 export const TreeComputedDataContext = React.createContext<Map<string, any>>(
   getInitialTreeComputedData()
 )
@@ -304,7 +310,17 @@ export function useTreeData<Data extends Record<string, any>, ComputedData exten
 
     return () => {
       unsubscribe()
-      treeComputedData.delete(generatedId)
+
+      /**
+       * React.useId changes between renders so we always hold onto the previous
+       * computed data and clear it during the subsequent cleanup.
+       */
+      const indexToRemove = computedDataToClear.length
+
+      computedDataToClear.push(() => {
+        treeComputedData.delete(generatedId)
+        computedDataToClear.splice(indexToRemove, 1)
+      })
     }
   }, dependencies.concat([computeData, treeMap]))
 
@@ -380,6 +396,15 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
     }
   }, [isRoot, treeCollection])
 
+  /** Cleanup computed data in top-level useEffect to allow ancestors and descendants to use computed data. */
+  React.useEffect(() => {
+    return () => {
+      if (isRoot) {
+        computedDataToClear.forEach((clear) => clear())
+      }
+    }
+  })
+
   let childrenToRender = (
     <MaxIndexContext.Provider value={maxIndexPath}>
       {React.Children.map(children, (child, index) =>
@@ -409,6 +434,9 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
     )
   }
 
+  /** Subscribe updates are batched to prevent multiple calls. */
+  const subscribeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
   return {
     id: generatedId,
     children: childrenToRender,
@@ -416,8 +444,13 @@ export function useTree<Data extends Record<string, any>, ComputedData extends a
     subscribe: React.useCallback((callback) => {
       let cleanup: null | (() => void) = null
       const handleUpdate = () => {
-        cleanup?.()
-        cleanup = callback(mapToTree(treeMapRef.current!))
+        if (subscribeTimeoutRef.current) {
+          clearTimeout(subscribeTimeoutRef.current)
+        }
+        subscribeTimeoutRef.current = setTimeout(() => {
+          cleanup?.()
+          cleanup = callback(mapToTree(treeMapRef.current!))
+        })
       }
       const unsubscribe = subscribe(treeComputedData, handleUpdate)
 
