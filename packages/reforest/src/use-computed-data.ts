@@ -1,6 +1,5 @@
 import * as React from "react"
 import { suspend } from "suspend-react"
-import { useSnapshot } from "valtio"
 
 import { ComputedDataContext, TreeStateContext } from "./contexts"
 import { isServer, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
@@ -57,18 +56,20 @@ export function useComputedData<ComputedData extends any>(
     serverComputedData = treeComputedData?.get(generatedId)
   }
 
-  const snapshot = useSnapshot(treeState)
-  const clientComputedData = React.useMemo(
-    () => (computeData ? computeData(sortMapByIndexPath(snapshot.treeMap)) : null),
-    dependencies.concat(snapshot)
-  )
+  const clientComputedData = null
 
-  useIsomorphicLayoutEffect(() => {
-    treeComputedData?.set(generatedId, clientComputedData)
-    return () => {
-      treeComputedData?.delete(generatedId)
-    }
-  }, [clientComputedData, generatedId])
+  // const snapshot = useSnapshot(treeState)
+  // const clientComputedData = React.useMemo(
+  //   () => (computeData ? computeData(sortMapByIndexPath(snapshot.treeMap)) : null),
+  //   dependencies.concat(snapshot)
+  // )
+
+  // useIsomorphicLayoutEffect(() => {
+  //   treeComputedData?.set(generatedId, clientComputedData)
+  //   return () => {
+  //     treeComputedData?.delete(generatedId)
+  //   }
+  // }, [clientComputedData, generatedId])
 
   return clientComputedData || serverComputedData
 }

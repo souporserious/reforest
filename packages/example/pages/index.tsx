@@ -1,6 +1,7 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useComputedData, useTree, useTreeData, useTreeSnapshot } from "reforest"
+import { useTree, useTreeAtom } from "reforest"
+import { atom, useAtom } from "jotai"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
@@ -96,9 +97,9 @@ function Scene({
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
   const tree = useTree(childrenProp)
-  const node = React.useMemo(() => ({ duration }), [duration])
+  const node = React.useMemo(() => atom({ duration }), [duration])
 
-  useTreeData(node)
+  useTreeAtom(node)
 
   if (timelineContextValue?.scroll) {
     return (
@@ -150,41 +151,50 @@ function Box({
   delay?: number
 }) {
   const node = React.useMemo(
-    () => ({
-      id,
-      width,
-      height,
-      backgroundColor,
-      opacity,
-      scale,
-      delay,
-    }),
+    () =>
+      atom({
+        id,
+        width,
+        height,
+        backgroundColor,
+        opacity,
+        scale,
+        delay,
+      }),
     []
   )
-  const treeId = useTreeData(node)
-  const shouldRender = useComputedData((treeMap) => {
-    const ids = new Set()
-    let shouldRender = false
 
-    treeMap.forEach(({ id }, treeIdToCompare) => {
-      const isSameId = treeId === treeIdToCompare
-      const hasId = ids.has(id)
+  useTreeAtom(node, (treeMapAtom, treeAtom) =>
+    atom((get) => {
+      const treeMap = get(treeMapAtom)
+      const treeId = treeAtom.toString()
 
-      if (isSameId) {
-        shouldRender = !hasId
-      }
+      return 0
+      // const ids = new Set()
+      // let shouldRender = false
 
-      if (!hasId) {
-        ids.add(id)
-      }
+      // treeMap.forEach(({ id }, treeIdToCompare) => {
+      //   const isSameId = treeId === treeIdToCompare
+      //   const hasId = ids.has(id)
+
+      //   if (isSameId) {
+      //     shouldRender = !hasId
+      //   }
+
+      //   if (!hasId) {
+      //     ids.add(id)
+      //   }
+      // })
+
+      // return { shouldRender }
     })
+  )
 
-    return shouldRender
-  })
+  // console.log(JSON.stringify(treeData.computed))
 
-  if (!shouldRender) {
-    return null
-  }
+  // if (!treeData.computed.shouldRender) {
+  //   return null
+  // }
 
   return (
     <div

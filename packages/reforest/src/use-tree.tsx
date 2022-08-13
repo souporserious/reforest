@@ -1,94 +1,140 @@
 import * as React from "react"
-import { proxy, useSnapshot } from "valtio"
-import { proxyMap, proxyWithComputed } from "valtio/utils"
-import memoize from "proxy-memoize"
+import type { Atom, PrimitiveAtom } from "jotai"
+import { atom, Provider, useAtom, useSetAtom } from "jotai"
 
-import { TreeStateContext } from "./contexts"
-import { useIndex, useIndexedChildren } from "./use-indexed-children"
-import { mapToTree, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
+const isServer = typeof window === "undefined"
+const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
-export function useTree<ComputedData extends any>(
-  children: React.ReactNode,
-  computeData?: (snapshot: any) => ComputedData
-) {
-  const treeStateContext = React.useContext(TreeStateContext)
-  const treeStateRef = React.useRef<any>(null)
-  const computeDataRef = React.useRef<typeof computeData>(computeData)
+const TreeContext = React.createContext<{
+  computedTreeMapAtom: PrimitiveAtom<Map<string, any>>
+  treeMapAtom: PrimitiveAtom<Map<string, any>>
+  treeNodeAtoms: Atom<any[]>
+} | null>(null)
 
-  useIsomorphicLayoutEffect(() => {
-    computeDataRef.current = computeData
-  })
+const reforestScope = Symbol()
 
-  if (treeStateContext === null && treeStateRef.current === null) {
-    const state = proxyWithComputed<
-      {
-        treeMap: Map<string, any>
-        subscribeTreeData: (key: string, value: any) => () => void
-      },
-      { computed: ComputedData | null }
-    >(
-      {
-        treeMap: proxyMap<string, any>(),
-        subscribeTreeData: (key: string, value: any) => {
-          state.treeMap.set(key, value)
-          return () => {
-            state.treeMap.delete(key)
-          }
-        },
-      },
-      {
-        computed: memoize((snapshot: any) => {
-          return computeDataRef.current ? computeDataRef.current(snapshot.treeMap) : null
-        }),
-      }
-    )
+/**
+ * Manage ordered data subscriptions for components.
+ *
+ * @example create a tree of data subscriptions
+ *
+ * import { useTree, useTreeAtom } from "reforest"
+ *
+ * function Item({ children, value }) {
+ *   const treeAtom = useTreeAtom(value)
+ *   return <li>{children}</li>
+ * }
+ *
+ * function ItemList({ children }: { children: React.ReactNode }) {
+ *   const tree = useTree(children)
+ *   return <ul>{tree.children}</ul>
+ * }
+ *
+ * @example omit children to manage subscriptions from outside a component.
+ *
+ * import { useTree } from "reforest"
+ *
+ * function App() {
+ *   const tree = useTree()
+ *   const treeMap = useAtomValue(tree.treeMapAtom)
+ *   const size = treeMap.size
+ *
+ *   return <List tree={tree} />
+ * }
+ */
+export function useTree(children: React.ReactNode) {
+  /** The tree map collects all leaf nodes. */
+  const [treeMapAtom] = React.useState(() => atom(new Map<string, any>()))
+  const treeNodeAtoms = React.useMemo(
+    () => atom((get) => Array.from(get(treeMapAtom).values()).map((atom) => get(atom))),
+    [treeMapAtom]
+  )
 
-    treeStateRef.current = state
-  } else {
-    treeStateRef.current = treeStateContext
-  }
+  /** The computed tree map collects all leaf node data computed from the tree map above. */
+  const [computedTreeMapAtom] = React.useState(() => atom(new Map<string, any>()))
 
-  const childrenToRender = (
-    <TreeStateContext.Provider value={treeStateRef.current}>
-      {useIndexedChildren(children)}
-    </TreeStateContext.Provider>
+  /** Only use one "root" context value. In the future, this can support nested computing if needed. */
+  const parentContextValue = React.useContext(TreeContext)
+  const contextValue = React.useMemo(
+    () => ({
+      computedTreeMapAtom,
+      treeMapAtom,
+      treeNodeAtoms,
+    }),
+    [computedTreeMapAtom, treeMapAtom, treeNodeAtoms]
+  )
+  const parsedContextValue = parentContextValue || contextValue
+  const isRoot = parentContextValue === null
+  const childrenToRender = isRoot ? (
+    <TreeContext.Provider value={parsedContextValue}>{children}</TreeContext.Provider>
+  ) : (
+    children
   )
 
   return {
+    isRoot,
     children: childrenToRender,
-    state: treeStateRef.current,
+    computedTreeMapAtom: parsedContextValue.computedTreeMapAtom,
+    treeMapAtom: parsedContextValue.treeMapAtom,
+    treeNodeAtoms: parsedContextValue.treeNodeAtoms,
   }
 }
 
-export function useTreeData(data: any) {
-  const treeState = React.useContext(TreeStateContext)
-  const treeId = React.useId()
-  const index = useIndex()
+export function useTreeAtom<TreeAtom extends PrimitiveAtom<any>>(
+  treeAtom: TreeAtom,
+  computeAtom?: (
+    treeMap: PrimitiveAtom<Map<string, TreeAtom>>,
+    treeAtom: TreeAtom
+  ) => PrimitiveAtom<any>
+) {
+  const treeContext = React.useContext(TreeContext)
 
+  if (treeContext === null) {
+    throw new Error("useTreeAtom must be used in a descendant component of useTree.")
+  }
+
+  const setTreeMap = useSetAtom(treeContext.treeMapAtom)
+  const setComputedTreeMap = useSetAtom(treeContext.computedTreeMapAtom)
+
+  /** Subscribe tree data to parent map. */
   useIsomorphicLayoutEffect(() => {
-    if (treeState === null) {
+    const id = treeAtom.toString()
+
+    setTreeMap((currentMap) => {
+      const nextMap = new Map(currentMap)
+      nextMap.set(id, treeAtom)
+      return nextMap
+    })
+
+    return () => {
+      setTreeMap((currentMap) => {
+        const nextMap = new Map(currentMap)
+        nextMap.delete(id)
+        return nextMap
+      })
+    }
+  }, [treeAtom])
+
+  /** Compute data from all collected tree data in parent map. */
+  useIsomorphicLayoutEffect(() => {
+    if (computeAtom === undefined) {
       return
     }
 
-    return treeState.subscribeTreeData(
-      treeId,
-      Object.assign({ treeId, indexPathString: index?.indexPathString }, data)
-    )
-  }, [treeState, treeId, index, data])
+    const id = treeAtom.toString()
 
-  return treeId
-}
+    setComputedTreeMap((currentMap) => {
+      const nextMap = new Map(currentMap)
+      nextMap.set(id, computeAtom(treeContext.treeMapAtom, treeAtom))
+      return nextMap
+    })
 
-const noopProxy = proxy({})
-
-export function useTreeSnapshot(treeState: ReturnType<typeof useTree>["state"] | null) {
-  const snapshot = useSnapshot(treeState || noopProxy)
-
-  return React.useMemo(
-    () => ({
-      map: snapshot.treeMap ? sortMapByIndexPath(snapshot.treeMap) : new Map(),
-      tree: snapshot.treeMap ? mapToTree(snapshot.treeMap) : [],
-    }),
-    [snapshot]
-  )
+    return () => {
+      setComputedTreeMap((currentMap) => {
+        const nextMap = new Map(currentMap)
+        nextMap.delete(id)
+        return nextMap
+      })
+    }
+  }, [computeAtom, treeAtom])
 }

@@ -1,6 +1,4 @@
 import * as React from "react"
-import { proxyMap, proxyWithComputed } from "valtio/utils"
-import memoize from "proxy-memoize"
 
 import { DATA_ID, isServer } from "./utils"
 
