@@ -30,17 +30,10 @@ export function getInitialComputedData() {
   return new Map(serverEntries)
 }
 
-export const ComputedDataContext = React.createContext<Map<string, any> | null>(
-  getInitialComputedData()
-)
+export const ComputedDataContext = React.createContext<Map<string, any>>(getInitialComputedData())
 
 ComputedDataContext.displayName = "ComputedDataContext"
 
-export type TreeStateContextValue<ComputedData extends any = any> = {
-  treeMap: Map<string, any>
-  subscribeTreeData: (key: string, value: any) => () => void
-} & {
-  computed: ComputedData | null
-}
+export const TreeMapContext = React.createContext<Map<string, any>>(new Map())
 
-export const TreeStateContext = React.createContext<TreeStateContextValue | null>(null)
+TreeMapContext.displayName = "TreeMapContext"

@@ -16,11 +16,10 @@ function Parent({ children }: { children: React.ReactNode }) {
     () => atom((get) => Array.from(get(tree.treeMapAtom).values()).map((atom) => get(atom))),
     [tree.treeMapAtom]
   )
-  const computedTreeNodeAtoms = React.useMemo(() => {
-    return atom((get) =>
-      Array.from(get(tree.computedTreeMapAtom).values()).map((atom) => get(atom))
-    )
-  }, [tree.computedTreeMapAtom])
+  const computedTreeNodeAtoms = React.useMemo(
+    () => atom((get) => Array.from(get(tree.computedTreeMapAtom).values())),
+    [tree.computedTreeMapAtom]
+  )
   const computedTreeNodes = useAtomValue(computedTreeNodeAtoms)
 
   return (
@@ -37,20 +36,14 @@ function Parent({ children }: { children: React.ReactNode }) {
 }
 
 function Child({ color, duration }: { color: string; duration: number }) {
-  const childAtom = React.useMemo(() => atom({ color, duration }), [color, duration])
+  const value = React.useMemo(() => ({ color, duration }), [color, duration])
 
-  useTreeAtom(childAtom, () => atom(duration))
+  const { computed } = useTreeAtom(value, (treeMap) => treeMap.size + duration)
 
   return (
-    <div
-      style={{
-        display: "grid",
-        padding: 16,
-        backgroundColor: color,
-        color: "white",
-      }}
-    >
+    <div style={{ display: "grid", padding: 16, backgroundColor: color, color: "white" }}>
       <div>Duration: {duration}</div>
+      <div>Computed: {computed}</div>
     </div>
   )
 }

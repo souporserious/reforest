@@ -164,31 +164,31 @@ function Box({
     []
   )
 
-  useTreeAtom(node, (treeMapAtom, treeAtom) =>
-    atom((get) => {
-      const treeMap = get(treeMapAtom)
-      const treeId = treeAtom.toString()
+  useTreeAtom(node, (treeMap, treeValue) => {
+    console.log({ treeMap, treeValue })
 
-      return 0
-      // const ids = new Set()
-      // let shouldRender = false
+    // const treeMap = get(treeMapAtom)
+    // const treeId = treeAtom.toString()
 
-      // treeMap.forEach(({ id }, treeIdToCompare) => {
-      //   const isSameId = treeId === treeIdToCompare
-      //   const hasId = ids.has(id)
+    // return 0
+    // const ids = new Set()
+    // let shouldRender = false
 
-      //   if (isSameId) {
-      //     shouldRender = !hasId
-      //   }
+    // treeMap.forEach(({ id }, treeIdToCompare) => {
+    //   const isSameId = treeId === treeIdToCompare
+    //   const hasId = ids.has(id)
 
-      //   if (!hasId) {
-      //     ids.add(id)
-      //   }
-      // })
+    //   if (isSameId) {
+    //     shouldRender = !hasId
+    //   }
 
-      // return { shouldRender }
-    })
-  )
+    //   if (!hasId) {
+    //     ids.add(id)
+    //   }
+    // })
+
+    // return { shouldRender }
+  })
 
   // console.log(JSON.stringify(treeData.computed))
 

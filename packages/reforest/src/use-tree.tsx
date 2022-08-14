@@ -1,9 +1,10 @@
 import * as React from "react"
-import type { Atom, PrimitiveAtom } from "jotai"
+import { Atom, PrimitiveAtom, useAtomValue } from "jotai"
 import { atom, Provider, useAtom, useSetAtom } from "jotai"
 
-const isServer = typeof window === "undefined"
-const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
+import { TreeMapContext } from "./contexts"
+import { useServerComputedData } from "./server"
+import { isServer, useIsomorphicLayoutEffect } from "./utils"
 
 const TreeContext = React.createContext<{
   computedTreeMapAtom: PrimitiveAtom<Map<string, any>>
@@ -80,61 +81,77 @@ export function useTree(children: React.ReactNode) {
   }
 }
 
-export function useTreeAtom<TreeAtom extends PrimitiveAtom<any>>(
-  treeAtom: TreeAtom,
-  computeAtom?: (
-    treeMap: PrimitiveAtom<Map<string, TreeAtom>>,
-    treeAtom: TreeAtom
-  ) => PrimitiveAtom<any>
+/** Subscribe data to the root useTree hook. */
+export function useTreeData<TreeValue extends any, ComputedTreeValue extends any>(
+  data: TreeValue,
+  computeData?: (
+    treeMap: Map<string, TreeValue>,
+    treeValue: TreeValue,
+    treeId: string
+  ) => ComputedTreeValue
 ) {
+  const treeAtom = React.useMemo(() => atom(data), [data])
+  const treeId = treeAtom.toString()
   const treeContext = React.useContext(TreeContext)
+  const treeMapContext = React.useContext(TreeMapContext)
 
   if (treeContext === null) {
-    throw new Error("useTreeAtom must be used in a descendant component of useTree.")
+    throw new Error("useTreeData must be used in a descendant component of useTree.")
   }
 
   const setTreeMap = useSetAtom(treeContext.treeMapAtom)
   const setComputedTreeMap = useSetAtom(treeContext.computedTreeMapAtom)
 
-  /** Subscribe tree data to parent map. */
-  useIsomorphicLayoutEffect(() => {
-    const id = treeAtom.toString()
+  /** Subscribe tree data to root map on the server and client. */
+  if (isServer) {
+    treeMapContext?.set(treeAtom.toString(), data)
+  }
 
+  useIsomorphicLayoutEffect(() => {
     setTreeMap((currentMap) => {
       const nextMap = new Map(currentMap)
-      nextMap.set(id, treeAtom)
+      nextMap.set(treeId, treeAtom)
       return nextMap
     })
 
     return () => {
       setTreeMap((currentMap) => {
         const nextMap = new Map(currentMap)
-        nextMap.delete(id)
+        nextMap.delete(treeId)
         return nextMap
       })
     }
   }, [treeAtom])
 
+  const treeMap = useAtomValue(treeContext.treeMapAtom)
+  const clientComputedData = React.useMemo(() => {
+    /**
+     * Tree map size is used to determine if this is initial hydration to make sure
+     * the server value is use first which might be brittle.
+     */
+    return computeData && treeMap.size > 0 ? computeData(treeMap, data, treeAtom.toString()) : null
+  }, [treeMap, data])
+
   /** Compute data from all collected tree data in parent map. */
+  const serverComputedData = useServerComputedData(data, treeId, computeData)
+
   useIsomorphicLayoutEffect(() => {
-    if (computeAtom === undefined) {
-      return
-    }
-
-    const id = treeAtom.toString()
-
     setComputedTreeMap((currentMap) => {
       const nextMap = new Map(currentMap)
-      nextMap.set(id, computeAtom(treeContext.treeMapAtom, treeAtom))
+      nextMap.set(treeId, clientComputedData)
       return nextMap
     })
 
     return () => {
       setComputedTreeMap((currentMap) => {
         const nextMap = new Map(currentMap)
-        nextMap.delete(id)
+        nextMap.delete(treeId)
         return nextMap
       })
     }
-  }, [computeAtom, treeAtom])
+  }, [clientComputedData, treeId])
+
+  return {
+    computed: clientComputedData || serverComputedData,
+  }
 }
