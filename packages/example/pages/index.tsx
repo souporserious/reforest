@@ -1,6 +1,6 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useTree, useTreeAtom } from "reforest"
+import { useTree, useTreeData } from "reforest"
 import { atom, useAtom } from "jotai"
 import { scroll, timeline } from "motion"
 
@@ -97,9 +97,9 @@ function Scene({
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
   const tree = useTree(childrenProp)
-  const node = React.useMemo(() => atom({ duration }), [duration])
+  const node = React.useMemo(() => ({ duration }), [duration])
 
-  useTreeAtom(node)
+  useTreeData(node)
 
   if (timelineContextValue?.scroll) {
     return (
@@ -151,42 +151,36 @@ function Box({
   delay?: number
 }) {
   const node = React.useMemo(
-    () =>
-      atom({
-        id,
-        width,
-        height,
-        backgroundColor,
-        opacity,
-        scale,
-        delay,
-      }),
+    () => ({
+      id,
+      width,
+      height,
+      backgroundColor,
+      opacity,
+      scale,
+      delay,
+    }),
     []
   )
 
-  useTreeAtom(node, (treeMap, treeValue) => {
-    console.log({ treeMap, treeValue })
-
+  useTreeData(node, (treeMap, treeValue, treeId) => {
+    console.log(treeMap)
+    // console.log({ treeMap, treeValue, treeId })
     // const treeMap = get(treeMapAtom)
     // const treeId = treeAtom.toString()
-
     // return 0
     // const ids = new Set()
     // let shouldRender = false
-
     // treeMap.forEach(({ id }, treeIdToCompare) => {
     //   const isSameId = treeId === treeIdToCompare
     //   const hasId = ids.has(id)
-
     //   if (isSameId) {
     //     shouldRender = !hasId
     //   }
-
     //   if (!hasId) {
     //     ids.add(id)
     //   }
     // })
-
     // return { shouldRender }
   })
 

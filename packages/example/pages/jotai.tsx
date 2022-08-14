@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useTree, useTreeAtom } from "reforest"
+import { useTree, useTreeData } from "reforest"
 import type { Atom } from "jotai"
 import { atom, useAtomValue } from "jotai"
 
@@ -38,7 +38,7 @@ function Parent({ children }: { children: React.ReactNode }) {
 function Child({ color, duration }: { color: string; duration: number }) {
   const value = React.useMemo(() => ({ color, duration }), [color, duration])
 
-  const { computed } = useTreeAtom(value, (treeMap) => treeMap.size + duration)
+  const { computed } = useTreeData(value, (treeMap) => treeMap.size + duration)
 
   return (
     <div style={{ display: "grid", padding: 16, backgroundColor: color, color: "white" }}>
