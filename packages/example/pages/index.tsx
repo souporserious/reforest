@@ -1,7 +1,6 @@
 import * as React from "react"
 import { flat } from "tree-visit"
 import { useTree, useTreeData } from "reforest"
-import { atom, useAtom } from "jotai"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
@@ -14,64 +13,63 @@ function Timeline({
   scroll?: boolean
 }) {
   const tree = useTree(childrenProp)
-  // const treeSnapshot = useTreeSnapshot(tree.state)
 
-  // React.useEffect(() => {
-  //   const ids = new Set()
-  //   let totalDuration = 0
+  React.useEffect(() => {
+    const ids = new Set()
+    let totalDuration = 0
 
-  //   if (treeSnapshot.tree === undefined) {
-  //     return
-  //   }
+    if (tree.treeChildren === null) {
+      return
+    }
 
-  //   const sceneKeyframes = treeSnapshot.tree.children
-  //     .flatMap((scene) => {
-  //       const sequences = flat(scene.children, {
-  //         getChildren: (node) => node?.children || [],
-  //       }).sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+    const sceneKeyframes = tree.treeChildren
+      .flatMap((scene) => {
+        const sequences = flat(scene, {
+          getChildren: (node) => node?.children || [],
+        })
+          .sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+          .slice(1)
 
-  //       const keyframes = sequences.flatMap((keyframes) => {
-  //         return keyframes?.map((keyframe) => {
-  //           const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
-  //           const styles = {
-  //             width,
-  //             height,
-  //             scale,
-  //             opacity,
-  //             backgroundColor,
-  //             transform: "translate(0px, 0px)",
-  //           }
-  //           const options = { duration: scene.duration, at: totalDuration, delay }
-  //           const hasId = ids.has(id)
+        const keyframes = sequences.map((keyframe) => {
+          const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+          const styles = {
+            width,
+            height,
+            scale,
+            opacity,
+            backgroundColor,
+            transform: "translate(0px, 0px)",
+          }
+          const options = { duration: scene.duration, at: totalDuration, delay }
+          const hasId = ids.has(id)
 
-  //           if (hasId) {
-  //             const bounds = document.getElementById(id)?.getBoundingClientRect()
-  //             const xOffset = window.scrollX + (bounds?.x || 0)
-  //             const yOffset = window.scrollY + (bounds?.y || 0)
+          if (hasId) {
+            const bounds = document.getElementById(id)?.getBoundingClientRect()
+            const xOffset = window.scrollX + (bounds?.x || 0)
+            const yOffset = window.scrollY + (bounds?.y || 0)
 
-  //             styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-  //           } else {
-  //             ids.add(id)
-  //           }
+            styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+          } else {
+            ids.add(id)
+          }
 
-  //           return [`#${id}`, styles, options]
-  //         })
-  //       })
+          return [`#${id}`, styles, options]
+        })
 
-  //       totalDuration += scene.duration
+        totalDuration += scene.duration
 
-  //       return keyframes
-  //     })
-  //     .filter(Boolean)
+        return keyframes
+      })
+      .filter(Boolean)
 
-  //   if (sceneKeyframes) {
-  //     const controls = timeline(sceneKeyframes)
+    if (sceneKeyframes) {
+      const controls = timeline(sceneKeyframes as any)
 
-  //     if (scrollProp && controls.pause) {
-  //       return scroll(controls)
-  //     }
-  //   }
-  // }, [scrollProp, treeSnapshot])
+      if (scrollProp && controls.pause) {
+        return scroll(controls)
+      }
+    }
+  }, [scrollProp, tree.treeChildren])
 
   const styles = {
     display: "grid",
@@ -97,7 +95,7 @@ function Scene({
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
   const tree = useTree(childrenProp)
-  const node = React.useMemo(() => ({ duration }), [duration])
+  const node = React.useMemo(() => ({ type: "scene", duration }), [duration])
 
   useTreeData(node)
 
@@ -152,6 +150,7 @@ function Box({
 }) {
   const node = React.useMemo(
     () => ({
+      type: "box",
       id,
       width,
       height,
@@ -163,32 +162,27 @@ function Box({
     []
   )
 
-  useTreeData(node, (treeMap, treeValue, treeId) => {
-    console.log(treeMap)
-    // console.log({ treeMap, treeValue, treeId })
-    // const treeMap = get(treeMapAtom)
-    // const treeId = treeAtom.toString()
-    // return 0
-    // const ids = new Set()
-    // let shouldRender = false
-    // treeMap.forEach(({ id }, treeIdToCompare) => {
-    //   const isSameId = treeId === treeIdToCompare
-    //   const hasId = ids.has(id)
-    //   if (isSameId) {
-    //     shouldRender = !hasId
-    //   }
-    //   if (!hasId) {
-    //     ids.add(id)
-    //   }
-    // })
-    // return { shouldRender }
+  const treeData = useTreeData(node, (treeMap, treeId) => {
+    const ids = new Set()
+    let shouldRender = false
+
+    treeMap.forEach(({ id }, treeIdToCompare) => {
+      const isSameId = treeId === treeIdToCompare
+      const hasId = ids.has(id)
+      if (isSameId) {
+        shouldRender = !hasId
+      }
+      if (!hasId) {
+        ids.add(id)
+      }
+    })
+
+    return { shouldRender }
   })
 
-  // console.log(JSON.stringify(treeData.computed))
-
-  // if (!treeData.computed.shouldRender) {
-  //   return null
-  // }
+  if (!treeData.computed.shouldRender) {
+    return null
+  }
 
   return (
     <div

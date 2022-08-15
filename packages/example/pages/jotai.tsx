@@ -12,24 +12,24 @@ function TotalDuration({ treeNodeAtoms }: { treeNodeAtoms: Atom<any[]> }) {
 
 function Parent({ children }: { children: React.ReactNode }) {
   const tree = useTree(children)
-  const treeNodeAtoms = React.useMemo(
-    () => atom((get) => Array.from(get(tree.treeMapAtom).values()).map((atom) => get(atom))),
-    [tree.treeMapAtom]
-  )
-  const computedTreeNodeAtoms = React.useMemo(
-    () => atom((get) => Array.from(get(tree.computedTreeMapAtom).values())),
-    [tree.computedTreeMapAtom]
-  )
-  const computedTreeNodes = useAtomValue(computedTreeNodeAtoms)
+  //   const treeNodeAtoms = React.useMemo(
+  //     () => atom((get) => Array.from(get(tree.treeMapAtom).values()).map((atom) => get(atom))),
+  //     [tree.treeMapAtom]
+  //   )
+  //   const computedTreeNodeAtoms = React.useMemo(
+  //     () => atom((get) => Array.from(get(tree.computedTreeMapAtom).values())),
+  //     [tree.computedTreeMapAtom]
+  //   )
+  //   const computedTreeNodes = useAtomValue(computedTreeNodeAtoms)
 
   return (
     <div>
-      {tree.isRoot ? (
+      {/* {tree.isRoot ? (
         <>
           <TotalDuration treeNodeAtoms={treeNodeAtoms} />
           <div>Remaining Durations: {computedTreeNodes.join(" / ")}</div>
         </>
-      ) : null}
+      ) : null} */}
       <div style={{ display: "flex", gap: "1rem" }}>{tree.children}</div>
     </div>
   )

@@ -46,7 +46,7 @@ export function mapToTree(dataMap: Map<string, any>) {
   const tree = arrayToTree(parsedValues, { dataField: null })
   const cleanedTree = cleanAndSortTree({ children: tree })
 
-  return cleanedTree
+  return cleanedTree ? cleanedTree.children : null
 }
 
 /** Sorts a map by an indexPathString property. */

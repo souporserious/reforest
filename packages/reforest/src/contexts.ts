@@ -38,7 +38,7 @@ ComputedDataContext.displayName = "ComputedDataContext"
 export const TreeAtomsContext = React.createContext<{
   computedTreeMapAtom: PrimitiveAtom<Map<string, any>>
   treeMapAtom: PrimitiveAtom<Map<string, any>>
-  treeNodeAtoms: Atom<any[]>
+  treeMapEntriesAtom: Atom<any[]>
 } | null>(null)
 
 TreeAtomsContext.displayName = "TreeAtomsContext"

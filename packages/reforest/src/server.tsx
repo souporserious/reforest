@@ -46,13 +46,8 @@ let globalTimeoutId: ReturnType<typeof setTimeout>
 
 /** Compute data based on all collected tree data. */
 export function useServerComputedData<TreeValue extends any, ComputedTreeValue extends any>(
-  data: TreeValue,
   treeId: string,
-  computeData?: (
-    treeMap: Map<string, TreeValue>,
-    treeValue: TreeValue,
-    treeId: string
-  ) => ComputedTreeValue
+  computeData?: (treeMap: Map<string, TreeValue>, treeId: string) => ComputedTreeValue
 ) {
   const treeMap = React.useContext(TreeMapContext)
   const treeComputedData = React.useContext(ComputedDataContext)
@@ -71,7 +66,7 @@ export function useServerComputedData<TreeValue extends any, ComputedTreeValue e
         /** Store all of the promises to compute. */
         globalResolves.push(() => {
           const sortedTreeMap = sortMapByIndexPath(treeMap)
-          const computedData = computeData(sortedTreeMap, data, treeId)
+          const computedData = computeData(sortedTreeMap, treeId)
 
           resolve(computedData)
         })
