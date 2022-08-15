@@ -10,35 +10,49 @@ import {
   flattenLayout,
 } from "@jsxui/layout"
 
-import { mapToTree, useComputedData, useIndexedChildren, useTreeData } from "../src"
+import { mapToChildren, useTree, useTreeData } from "../src"
 
 const RootNode = React.createContext<LayoutNode | null>(null)
 
-function Grid({
-  children,
-  columns,
-  rows,
-  width,
-  height,
-}: {
+type GridProps = {
   children: React.ReactNode
   columns: number
   rows: number
   width?: number
   height?: number
-}) {
+}
+
+function RootGrid({ children, columns, rows, width, height }: GridProps) {
   const node = React.useMemo(
     () => createGrid({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const indexedChildren = useIndexedChildren(children)
-
-  useTreeData(node)
 
   return (
     <div style={{ width, height }}>
-      <RootNode.Provider value={node}>{indexedChildren}</RootNode.Provider>
+      <RootNode.Provider value={node}>{children}</RootNode.Provider>
     </div>
+  )
+}
+
+function SubGrid({ children, columns, rows, width, height }: GridProps) {
+  const node = React.useMemo(
+    () => createGrid({ columns, rows, width, height }),
+    [columns, rows, width, height]
+  )
+
+  useTreeData(node)
+
+  return <div style={{ width, height }}>{children}</div>
+}
+
+function Grid({ children, ...restProps }: GridProps) {
+  const tree = useTree(children)
+
+  return tree.isRoot ? (
+    <RootGrid {...restProps}>{tree.children}</RootGrid>
+  ) : (
+    <SubGrid {...restProps}>{tree.children}</SubGrid>
   )
 }
 
@@ -59,11 +73,11 @@ function Column({
     () => createColumn({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const indexedChildren = useIndexedChildren(children)
+  const tree = useTree(children)
 
   useTreeData(node)
 
-  return indexedChildren
+  return tree.children
 }
 
 function Row({
@@ -83,11 +97,11 @@ function Row({
     () => createRow({ columns, rows, width, height }),
     [columns, rows, width, height]
   )
-  const indexedChildren = useIndexedChildren(children)
+  const tree = useTree(children)
 
   useTreeData(node)
 
-  return indexedChildren
+  return tree.children
 }
 
 function Space({ size }: { size?: number }) {
@@ -114,25 +128,21 @@ function Box({
   }
 
   const node = React.useMemo(() => createNode({ width, height }), [width, height])
-  const treeId = useTreeData(node)
-  const computed = useComputedData((treeMap) => {
-    console.log(treeMap.size)
-    return {}
-    // const tree = mapToTree(treeMap)
-    // const rootTree = { ...rootNode, children: tree.children }
-    // const computedLayout = computeLayout(rootTree).layout
-    // const flattenedLayout = flattenLayout(computedLayout.layout)
-    // const nodeLayout = flattenedLayout?.children.find((node: any) => node.treeId === treeId)
+  const treeData = useTreeData(node, (treeMap, treeId) => {
+    const treeChildren = mapToChildren(treeMap)
+    const computedLayout = computeLayout({ ...rootNode, children: treeChildren })
+    const flattenedLayout = flattenLayout(computedLayout.layout)
+    const nodeLayout = flattenedLayout?.children.find((node: any) => node.treeId === treeId)
 
-    // return {
-    //   width: nodeLayout?.width,
-    //   height: nodeLayout?.height,
-    //   top: nodeLayout?.column,
-    //   left: nodeLayout?.row,
-    // }
+    return {
+      width: nodeLayout?.width,
+      height: nodeLayout?.height,
+      top: nodeLayout?.column,
+      left: nodeLayout?.row,
+    }
   })
 
-  return <div style={computed}>{children}</div>
+  return <div style={treeData.computed}>{children}</div>
 }
 
 export function App() {

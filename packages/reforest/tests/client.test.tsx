@@ -2,24 +2,23 @@ import * as React from "react"
 import { waitFor, render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
-import { useIndexedChildren, useIndex, useTreeData, useTreeEffect } from "../src"
+import { useIndexedChildren, useIndex, useTree, useTreeData } from "../src"
 
 import { App } from "./App"
 
 test("renders a simple list of items with the correct indexes", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const indexedChildren = useIndexedChildren(children)
     const index = useIndex()
 
     useTreeData(React.useMemo(() => ({ value }), [value]))
 
-    return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
+    return <div data-testid={index?.indexPathString}>{children}</div>
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const indexedChildren = useIndexedChildren(children)
+    const tree = useTree(children)
 
-    return indexedChildren
+    return tree.children
   }
 
   await waitFor(() => {
@@ -38,21 +37,15 @@ test("renders a simple list of items with the correct indexes", async () => {
 })
 
 test("renders a complex list of items with the correct indexes", async () => {
-  const handleTreeUpdate = jest.fn()
-
-  function Item({ children, value }: { children: React.ReactNode; value: string }) {
+  function Item({ children }: { children: React.ReactNode; value: string }) {
     const indexedChildren = useIndexedChildren(children)
     const index = useIndex()
-
-    useTreeData(React.useMemo(() => ({ value }), [value]))
 
     return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
     const indexedChildren = useIndexedChildren(children)
-
-    useTreeEffect(handleTreeUpdate)
 
     return indexedChildren
   }
@@ -84,10 +77,6 @@ test("renders a complex list of items with the correct indexes", async () => {
     )
 
     expect(queryByTestId("2.3")).toHaveTextContent("Bosc")
-
-    expect(handleTreeUpdate).toHaveBeenCalledTimes(1)
-
-    expect(handleTreeUpdate).toMatchSnapshot()
   })
 })
 

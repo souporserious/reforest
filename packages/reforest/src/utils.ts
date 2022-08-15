@@ -32,8 +32,8 @@ export function cleanAndSortTree(tree: any) {
   return tree.data
 }
 
-/** Builds a tree from a Map of data collected in useTree. */
-export function mapToTree(dataMap: Map<string, any>) {
+/** Builds an array of trees from a Map of data collected in useTree. */
+export function mapToChildren(dataMap: Map<string, any>) {
   const parsedValues = Array.from(dataMap.values()).map((data) => {
     const parentIndexPathString = parseIndexPath(data.indexPathString).slice(0, -1).join(".")
 

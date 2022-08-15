@@ -3,7 +3,7 @@ import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
 
-import { createTreeProvider, useComputedData, useIndexedChildren, useTreeData } from "../src"
+import { createTreeProvider, useTree, useTreeData } from "../src"
 import { App } from "./App"
 
 /** Simple render function to mock what renderToPipeableStream does. */
@@ -31,26 +31,28 @@ function render(element: React.ReactNode) {
 
 test("computed data renders on server", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const treeId = useTreeData(React.useMemo(() => ({ value }), [value]))
-    const computed = useComputedData((treeMap) => {
-      if (treeMap) {
-        return treeMap.size
+    const tree = useTree(children)
+    const treeData = useTreeData(
+      React.useMemo(() => ({ value }), [value]),
+      (treeMap) => {
+        if (treeMap) {
+          return treeMap.size
+        }
+        return 0
       }
-      return 0
-    })
-    const indexedChildren = useIndexedChildren(children)
+    )
 
     return (
-      <div data-testid={treeId}>
-        {computed} {indexedChildren}
+      <div data-testid={treeData.treeId}>
+        {treeData.computed} {tree.children}
       </div>
     )
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const indexedChildren = useIndexedChildren(children)
+    const tree = useTree(children)
 
-    return indexedChildren
+    return tree.children
   }
 
   const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
@@ -72,34 +74,36 @@ test("computed data renders on server", async () => {
 
 test("changing rendered elements based on computed data", async () => {
   function Box({ id }: { id: string }) {
-    const treeId = useTreeData(React.useMemo(() => ({ id }), [id]))
-    const shouldRender = useComputedData((treeMap) => {
-      const ids = new Set()
-      let shouldRender = false
+    const treeData = useTreeData(
+      React.useMemo(() => ({ id }), [id]),
+      (treeMap, treeId) => {
+        const ids = new Set()
+        let shouldRender = false
 
-      treeMap?.forEach(({ id }, treeIdToCompare) => {
-        const isSameId = treeId === treeIdToCompare
-        const hasId = ids.has(id)
+        treeMap?.forEach(({ id }, treeIdToCompare) => {
+          const isSameId = treeId === treeIdToCompare
+          const hasId = ids.has(id)
 
-        if (isSameId) {
-          shouldRender = !hasId
-        }
+          if (isSameId) {
+            shouldRender = !hasId
+          }
 
-        if (!hasId) {
-          ids.add(id)
-        }
-      })
+          if (!hasId) {
+            ids.add(id)
+          }
+        })
 
-      return shouldRender
-    })
+        return { shouldRender }
+      }
+    )
 
-    return shouldRender ? <div id={id} /> : null
+    return treeData.computed.shouldRender ? <div id={id} /> : null
   }
 
   function Parent({ children }: { children: React.ReactNode }) {
-    const indexedChildren = useIndexedChildren(children)
+    const tree = useTree(children)
 
-    return indexedChildren
+    return tree.children
   }
 
   const { TreeProvider } = createTreeProvider()

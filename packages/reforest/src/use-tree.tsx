@@ -4,7 +4,7 @@ import { atom, useAtomValue, useSetAtom } from "jotai"
 import { TreeAtomsContext, TreeMapContext } from "./contexts"
 import { useServerComputedData } from "./server"
 import { useIndex, useIndexedChildren } from "./use-indexed-children"
-import { isServer, mapToTree, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
+import { isServer, mapToChildren, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
 
 /**
  * Control tree state from outside a component.
@@ -65,7 +65,7 @@ export function useTreeState() {
 
   const treeMapEntries = useAtomValue(treeMapEntriesAtom)
   const treeMap = new Map(treeMapEntries as any) as Map<string, Record<string, any>>
-  const treeChildren = mapToTree(treeMap as any) as Array<any>
+  const treeChildren = mapToChildren(treeMap as any) as Array<any>
 
   return { atoms, treeMap, treeChildren }
 }
