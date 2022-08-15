@@ -126,7 +126,8 @@ export function useTree(children: React.ReactNode, parentTreeState?: TreeState) 
 /** Subscribe data to the root useTree hook. */
 export function useTreeData<TreeValue extends any, ComputedTreeValue extends any>(
   data: TreeValue,
-  computeData?: (treeMap: Map<string, TreeValue>, treeId: string) => ComputedTreeValue
+  computeData?: (treeMap: Map<string, TreeValue>, treeId: string) => ComputedTreeValue,
+  dependencies: React.DependencyList = []
 ) {
   const treeAtomsContext = React.useContext(TreeAtomsContext)
   const treeMapContext = React.useContext(TreeMapContext)
@@ -180,7 +181,7 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
      * the server value is used first.
      */
     return computeData && treeMap.size > 0 ? computeData(sortedTreeMap, treeAtom.toString()) : null
-  }, [treeMap, data])
+  }, dependencies.concat([treeMap, data]))
 
   /** Compute data from all collected tree data in parent map. */
   const serverComputedData = useServerComputedData(treeId, computeData)
