@@ -7,36 +7,34 @@ import { useIndex, useIndexedChildren } from "./use-indexed-children"
 import { isServer, mapToTree, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
 
 /**
- * Manage ordered data subscriptions for components.
+ * Control tree state from outside a component.
  *
- * @example create a tree of data subscriptions
- *
- * import { useTree, useTreeData } from "reforest"
+ * @example
+ * import type { TreeState } from "reforest"
+ * import { useTree, useTreeData, useTreeState } from "reforest"
  *
  * function Item({ children, value }) {
  *   useTreeData(value)
  *   return <li>{children}</li>
  * }
  *
- * function ItemList({ children }: { children: React.ReactNode }) {
- *   const tree = useTree(children)
+ * function ItemList({ children }: { children: React.ReactNode, treeState: TreeState }) {
+ *   const tree = useTree(children, treeState)
  *   return <ul>{tree.children}</ul>
  * }
  *
- * @example omit children to manage subscriptions from outside a component.
- *
- * import { useTree } from "reforest"
- * import { useAtomValue } from "jotai"
- *
  * function App() {
- *   const tree = useTree()
- *   const treeMap = useAtomValue(tree.treeMapAtom)
- *   const size = treeMap.size
- *
- *   return <List tree={tree} />
+ *   const treeState = useTreeState()
+ *   return (
+ *     <ItemList treeState={treeState}>
+ *       <Item value="apple">Apple</Item>
+ *       <Item value="banana">Banana</Item>
+ *       <Item value="cherry">Cherry</Item>
+ *     </ItemList>
+ *   )
  * }
  */
-export function useTree(children: React.ReactNode) {
+export function useTreeState() {
   /** Tree map collects all leaf nodes. */
   const [treeMapAtom] = React.useState(() => atom(new Map<string, Record<string, any>>()))
 
@@ -56,13 +54,7 @@ export function useTree(children: React.ReactNode) {
     [treeMapAtom, computedTreeMapAtom]
   )
 
-  const treeMapEntries = useAtomValue(treeMapEntriesAtom)
-  const treeMap = new Map(treeMapEntries as any) as Map<string, Record<string, any>>
-  const treeChildren = mapToTree(treeMap as any) as Array<any>
-
-  /** Only use one "root" context value. In the future, this can support nested computing if needed. */
-  const parentContextValue = React.useContext(TreeAtomsContext)
-  const contextValue = React.useMemo(
+  const atoms = React.useMemo(
     () => ({
       computedTreeMapAtom,
       treeMapAtom,
@@ -70,7 +62,49 @@ export function useTree(children: React.ReactNode) {
     }),
     [computedTreeMapAtom, treeMapAtom, treeMapEntriesAtom]
   )
-  const parsedContextValue = parentContextValue || contextValue
+
+  const treeMapEntries = useAtomValue(treeMapEntriesAtom)
+  const treeMap = new Map(treeMapEntries as any) as Map<string, Record<string, any>>
+  const treeChildren = mapToTree(treeMap as any) as Array<any>
+
+  return { atoms, treeMap, treeChildren }
+}
+
+export type TreeState = ReturnType<typeof useTreeState>
+
+/**
+ * Manage ordered data subscriptions for components.
+ *
+ * @example create a tree of data subscriptions
+ * import { useTree, useTreeData } from "reforest"
+ *
+ * function Item({ children, value }) {
+ *   useTreeData(value)
+ *   return <li>{children}</li>
+ * }
+ *
+ * function ItemList({ children }: { children: React.ReactNode }) {
+ *   const tree = useTree(children)
+ *   return <ul>{tree.children}</ul>
+ * }
+ *
+ * @example omit children to manage subscriptions from outside a component.
+ * import { useTree } from "reforest"
+ * import { useAtomValue } from "jotai"
+ *
+ * function App() {
+ *   const tree = useTree()
+ *   const treeMap = useAtomValue(tree.treeMapAtom)
+ *   const size = treeMap.size
+ *
+ *   return <List tree={tree} />
+ * }
+ */
+export function useTree(children: React.ReactNode, parentTreeState?: TreeState) {
+  const defaultTreeState = useTreeState()
+  const treeState = parentTreeState || defaultTreeState
+  const parentContextValue = React.useContext(TreeAtomsContext)
+  const parsedContextValue = parentContextValue || treeState.atoms
   const isRoot = parentContextValue === null
   const indexedChildren = useIndexedChildren(children)
   const childrenToRender = isRoot ? (
@@ -83,9 +117,9 @@ export function useTree(children: React.ReactNode) {
 
   return {
     children: childrenToRender,
+    treeMap: treeState.treeMap,
+    treeChildren: treeState.treeChildren,
     isRoot,
-    treeMap,
-    treeChildren,
   }
 }
 

@@ -1,43 +1,28 @@
 import * as React from "react"
-import { useTree, useTreeData } from "reforest"
-import type { Atom } from "jotai"
+import type { TreeState } from "reforest"
+import { useTree, useTreeData, useTreeState } from "reforest"
 import { atom, useAtomValue } from "jotai"
 
-function TotalDuration({ treeNodeAtoms }: { treeNodeAtoms: Atom<any[]> }) {
+function TotalDuration({ treeState }: { treeState: TreeState }) {
+  const treeNodeAtoms = React.useMemo(
+    () =>
+      atom((get) => Array.from(get(treeState.atoms.treeMapAtom).values()).map((atom) => get(atom))),
+    [treeState.atoms.treeMapAtom]
+  )
   const treeNodes = useAtomValue(treeNodeAtoms)
   const totalDuration = treeNodes.reduce((total, node: any) => total + node.duration, 0) as number
 
   return <div>Total Duration: {totalDuration}</div>
 }
 
-function Parent({ children }: { children: React.ReactNode }) {
-  const tree = useTree(children)
-  //   const treeNodeAtoms = React.useMemo(
-  //     () => atom((get) => Array.from(get(tree.treeMapAtom).values()).map((atom) => get(atom))),
-  //     [tree.treeMapAtom]
-  //   )
-  //   const computedTreeNodeAtoms = React.useMemo(
-  //     () => atom((get) => Array.from(get(tree.computedTreeMapAtom).values())),
-  //     [tree.computedTreeMapAtom]
-  //   )
-  //   const computedTreeNodes = useAtomValue(computedTreeNodeAtoms)
+function Parent({ children, treeState }: { children: React.ReactNode; treeState?: TreeState }) {
+  const tree = useTree(children, treeState)
 
-  return (
-    <div>
-      {/* {tree.isRoot ? (
-        <>
-          <TotalDuration treeNodeAtoms={treeNodeAtoms} />
-          <div>Remaining Durations: {computedTreeNodes.join(" / ")}</div>
-        </>
-      ) : null} */}
-      <div style={{ display: "flex", gap: "1rem" }}>{tree.children}</div>
-    </div>
-  )
+  return <div style={{ display: "flex", gap: "1rem" }}>{tree.children}</div>
 }
 
 function Child({ color, duration }: { color: string; duration: number }) {
   const value = React.useMemo(() => ({ color, duration }), [color, duration])
-
   const { computed } = useTreeData(value, (treeMap) => treeMap.size + duration)
 
   return (
@@ -50,12 +35,14 @@ function Child({ color, duration }: { color: string; duration: number }) {
 
 export default function App() {
   const [showChild, setShowChild] = React.useState(false)
+  const treeState = useTreeState()
 
   return (
     <>
       <button onClick={() => setShowChild((bool) => !bool)}>Toggle Child</button>
+      <TotalDuration treeState={treeState} />
       <React.Suspense fallback={null}>
-        <Parent>
+        <Parent treeState={treeState}>
           <Child duration={3} color="green" />
           <Child duration={1.5} color="blue" />
           <Parent>

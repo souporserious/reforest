@@ -1,4 +1,5 @@
 export { createTreeProvider, stringifyTreeMap } from "./server"
 export { useIndex, useIndexedChildren } from "./use-indexed-children"
-export { useTree, useTreeData } from "./use-tree"
+export type { TreeState } from "./use-tree"
+export { useTree, useTreeData, useTreeState } from "./use-tree"
 export { cleanAndSortTree, mapToTree, parseIndexPath, sortMapByIndexPath } from "./utils"
