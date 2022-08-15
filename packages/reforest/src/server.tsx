@@ -51,7 +51,6 @@ export function useServerComputedData<TreeValue extends any, ComputedTreeValue e
 ) {
   const treeMap = React.useContext(TreeMapContext)
   const treeComputedData = React.useContext(ComputedDataContext)
-  const generatedId = React.useId()
 
   /** Use Suspense to re-render the component before committing the final props on the server. */
   const isServerWithComputedData = isServer && treeMap && computeData !== undefined
@@ -78,12 +77,12 @@ export function useServerComputedData<TreeValue extends any, ComputedTreeValue e
           globalResolves = []
         })
       })
-    }, [generatedId])
+    }, [treeId])
 
     /** Store computed data so it can be injected on the server. */
-    treeComputedData?.set(generatedId, serverComputedData)
+    treeComputedData?.set(treeId, serverComputedData)
   } else {
-    serverComputedData = treeComputedData?.get(generatedId)
+    serverComputedData = treeComputedData?.get(treeId)
   }
 
   return serverComputedData

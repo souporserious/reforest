@@ -88,18 +88,6 @@ export type TreeState = ReturnType<typeof useTreeState>
  *   const tree = useTree(children)
  *   return <ul>{tree.children}</ul>
  * }
- *
- * @example omit children to manage subscriptions from outside a component.
- * import { useTree } from "reforest"
- * import { useAtomValue } from "jotai"
- *
- * function App() {
- *   const tree = useTree()
- *   const treeMap = useAtomValue(tree.treeMapAtom)
- *   const size = treeMap.size
- *
- *   return <List tree={tree} />
- * }
  */
 export function useTree(children: React.ReactNode, parentTreeState?: TreeState) {
   const defaultTreeState = useTreeState()
@@ -132,6 +120,7 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
 ) {
   const treeAtomsContext = React.useContext(TreeAtomsContext)
   const treeMapContext = React.useContext(TreeMapContext)
+  const treeId = React.useId()
 
   if (treeAtomsContext === null) {
     throw new Error("useTreeData must be used in a descendant component of useTree.")
@@ -143,14 +132,13 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
     () => atom(Object.assign({ indexPathString }, data)),
     [data, indexPathString]
   )
-  const treeId = treeAtom.toString()
 
   const setTreeMapAtom = useSetAtom(treeAtomsContext.treeMapAtom)
   const setComputedTreeMapAtom = useSetAtom(treeAtomsContext.computedTreeMapAtom)
 
   /** Subscribe tree data to root map on the server and client. */
   if (isServer) {
-    treeMapContext?.set(treeAtom.toString(), Object.assign({ indexPathString, treeId }, data))
+    treeMapContext?.set(treeId, Object.assign({ indexPathString, treeId }, data))
   }
 
   useIsomorphicLayoutEffect(() => {
@@ -181,7 +169,7 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
      * Tree map size is used to determine if this is initial hydration to make sure
      * the server value is used first.
      */
-    return computeData && treeMap.size > 0 ? computeData(sortedTreeMap, treeAtom.toString()) : null
+    return computeData && treeMap.size > 0 ? computeData(sortedTreeMap, treeId) : null
   }, dependencies.concat([treeMap, data]))
 
   /** Compute data from all collected tree data in parent map. */
