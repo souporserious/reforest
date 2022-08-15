@@ -12,7 +12,7 @@ import {
 
 import { mapToChildren, useTree, useTreeData } from "../src"
 
-const RootNode = React.createContext<LayoutNode | null>(null)
+const RootNodeContext = React.createContext<LayoutNode | null>(null)
 
 type GridProps = {
   children: React.ReactNode
@@ -30,7 +30,7 @@ function RootGrid({ children, columns, rows, width, height }: GridProps) {
 
   return (
     <div style={{ width, height }}>
-      <RootNode.Provider value={node}>{children}</RootNode.Provider>
+      <RootNodeContext.Provider value={node}>{children}</RootNodeContext.Provider>
     </div>
   )
 }
@@ -121,7 +121,7 @@ function Box({
   width?: number
   height?: number
 }) {
-  const rootNode = React.useContext(RootNode)
+  const rootNode = React.useContext(RootNodeContext)
 
   if (rootNode === null) {
     throw new Error("Box must be used in Grid.")

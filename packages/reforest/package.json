@@ -45,8 +45,7 @@
   "dependencies": {
     "jotai": "^1.7.8",
     "performant-array-to-tree": "^1.11.0",
-    "suspend-react": "^0.0.8",
-    "use-constant": "^1.1.1"
+    "suspend-react": "^0.0.8"
   },
   "devDependencies": {
     "@jsxui/layout": "^0.1.3",

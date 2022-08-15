@@ -41,14 +41,15 @@ export function useTreeState() {
   /** Computed tree map collects all leaf node data computed from the tree map above. */
   const [computedTreeMapAtom] = React.useState(() => atom(new Map<string, any>()))
 
+  /** Stitch the computed data together into a new tree map. */
   const treeMapEntriesAtom = React.useMemo(
     () =>
       atom((get) => {
         const computedMap = get(computedTreeMapAtom)
 
-        return Array.from(get(treeMapAtom).entries()).map(([id, atom]) => [
-          id,
-          Object.assign({ computed: computedMap.get(id) }, get(atom as any)),
+        return Array.from(get(treeMapAtom).entries()).map(([treeId, atom]) => [
+          treeId,
+          Object.assign({ computed: computedMap.get(treeId), treeId }, get(atom as any)),
         ])
       }),
     [treeMapAtom, computedTreeMapAtom]

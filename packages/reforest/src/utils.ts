@@ -57,3 +57,14 @@ export function sortMapByIndexPath(treeMap: Map<string, any>) {
 
   return new Map(sortedEntries)
 }
+
+/** Flattens and sorts all tree nodes into one array. */
+export function flattenChildren(children: any[], _shouldSort: boolean = true) {
+  const flatChildren = children.flatMap((child) =>
+    child.children ? flattenChildren(child.children) : [child]
+  )
+
+  return _shouldSort
+    ? flatChildren.sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+    : flatChildren
+}

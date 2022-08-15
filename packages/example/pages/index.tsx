@@ -31,7 +31,7 @@ function Timeline({
           .slice(1)
 
         const keyframes = sequences.map((keyframe) => {
-          const { id, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
+          const { id, treeId, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
           const styles = {
             width,
             height,
@@ -42,6 +42,7 @@ function Timeline({
           }
           const options = { duration: scene.duration, at: totalDuration, delay }
           const hasId = ids.has(id)
+          const parsedId = id || treeId
 
           if (hasId) {
             const bounds = document.getElementById(id)?.getBoundingClientRect()
@@ -53,7 +54,7 @@ function Timeline({
             ids.add(id)
           }
 
-          return [`#${id}`, styles, options]
+          return [`#${parsedId}`, styles, options]
         })
 
         totalDuration += scene.duration
