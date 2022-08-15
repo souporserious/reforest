@@ -3,7 +3,7 @@ import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { Writable } from "stream"
 
-import { createTreeProvider, useTree, useTreeData } from "../index"
+import { createTreeProvider, useTree, useTreeData } from "../src"
 import { App } from "./App"
 
 /** Simple render function to mock what renderToPipeableStream does. */
@@ -31,20 +31,20 @@ function render(element: React.ReactNode) {
 
 test("computed data renders on server", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const data = useTreeData(
+    const tree = useTree(children)
+    const treeData = useTreeData(
       React.useMemo(() => ({ value }), [value]),
-      (tree) => {
-        if (tree.map) {
-          return tree.map.size
+      (treeMap) => {
+        if (treeMap) {
+          return treeMap.size
         }
         return 0
       }
     )
-    const tree = useTree(children)
 
     return (
-      <div data-testid={data?.indexPathString}>
-        {data!.computed} {tree.children}
+      <div data-testid={treeData.treeId}>
+        {treeData.computed} {tree.children}
       </div>
     )
   }
@@ -55,7 +55,7 @@ test("computed data renders on server", async () => {
     return tree.children
   }
 
-  const { TreeProvider, stringifyTreeCollection } = createTreeProvider()
+  const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
   const renderedString = await render(
     <React.Suspense fallback={null}>
       <TreeProvider>
@@ -69,19 +69,19 @@ test("computed data renders on server", async () => {
   )
 
   expect(renderedString).toMatchSnapshot()
-  expect(stringifyTreeCollection()).toMatchSnapshot()
+  expect(stringifyTreeComputedData()).toMatchSnapshot()
 })
 
 test("changing rendered elements based on computed data", async () => {
   function Box({ id }: { id: string }) {
-    const data = useTreeData(
+    const treeData = useTreeData(
       React.useMemo(() => ({ id }), [id]),
-      (tree, generatedId) => {
+      (treeMap, treeId) => {
         const ids = new Set()
         let shouldRender = false
 
-        tree.map?.forEach(({ id }, generatedIdToCompare) => {
-          const isSameId = generatedId === generatedIdToCompare
+        treeMap?.forEach(({ id }, treeIdToCompare) => {
+          const isSameId = treeId === treeIdToCompare
           const hasId = ids.has(id)
 
           if (isSameId) {
@@ -93,11 +93,11 @@ test("changing rendered elements based on computed data", async () => {
           }
         })
 
-        return shouldRender
+        return { shouldRender }
       }
     )
 
-    return data?.computed ? <div id={id} /> : null
+    return treeData.computed.shouldRender ? <div id={id} /> : null
   }
 
   function Parent({ children }: { children: React.ReactNode }) {
@@ -124,7 +124,7 @@ test("changing rendered elements based on computed data", async () => {
 })
 
 test("tree collection", async () => {
-  const { TreeProvider, stringifyTreeComputedData, stringifyTreeCollection } = createTreeProvider()
+  const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
 
   const renderedString = await render(
     <TreeProvider>
@@ -133,6 +133,5 @@ test("tree collection", async () => {
   )
 
   expect(renderedString).toMatchSnapshot()
-  expect(stringifyTreeCollection()).toMatchSnapshot()
   expect(stringifyTreeComputedData()).toMatchSnapshot()
 })

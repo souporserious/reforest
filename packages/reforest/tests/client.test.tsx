@@ -2,16 +2,17 @@ import * as React from "react"
 import { waitFor, render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
-import { useTree, useTreeData } from "../index"
+import { useIndexedChildren, useIndex, useTree, useTreeData } from "../src"
 
 import { App } from "./App"
 
 test("renders a simple list of items with the correct indexes", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const tree = useTree(children)
-    const data = useTreeData(React.useMemo(() => ({ value }), [value]))
+    const index = useIndex()
 
-    return <div data-testid={data?.indexPathString}>{tree.children}</div>
+    useTreeData(React.useMemo(() => ({ value }), [value]))
+
+    return <div data-testid={index?.indexPathString}>{children}</div>
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
@@ -36,23 +37,17 @@ test("renders a simple list of items with the correct indexes", async () => {
 })
 
 test("renders a complex list of items with the correct indexes", async () => {
-  const handleTreeUpdate = jest.fn()
+  function Item({ children }: { children: React.ReactNode; value: string }) {
+    const indexedChildren = useIndexedChildren(children)
+    const index = useIndex()
 
-  function Item({ children, value }: { children: React.ReactNode; value: string }) {
-    const tree = useTree(children)
-    const data = useTreeData(React.useMemo(() => ({ value }), [value]))
-
-    return <div data-testid={data?.indexPathString}>{tree.children}</div>
+    return <div data-testid={index?.indexPathString}>{indexedChildren}</div>
   }
 
   function ItemList({ children }: { children: React.ReactNode }) {
-    const tree = useTree(children)
+    const indexedChildren = useIndexedChildren(children)
 
-    React.useEffect(() => {
-      return tree.subscribe(handleTreeUpdate)
-    }, [])
-
-    return tree.children
+    return indexedChildren
   }
 
   await waitFor(() => {
@@ -82,12 +77,6 @@ test("renders a complex list of items with the correct indexes", async () => {
     )
 
     expect(queryByTestId("2.3")).toHaveTextContent("Bosc")
-
-    // TODO: look into why these are hanging tests
-
-    // expect(handleTreeUpdate).toHaveBeenCalledTimes(1)
-
-    // expect(handleTreeUpdate).toMatchSnapshot()
   })
 })
 

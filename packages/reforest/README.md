@@ -1,6 +1,6 @@
 # 🌲 reforest
 
-Collect and compute React render data seamlessly across the server and client.
+Collect ordered React render data seamlessly across the server and client.
 
 > **Note**
 > While digital trees are cool, climate change is affecting real trees at a rapid rate. Please consider planting a tree, starting a garden, or donating to an [organization](https://onetreeplanted.org/).
