@@ -6,7 +6,9 @@ import { atom, useAtomValue } from "jotai"
 function TotalDuration({ treeState }: { treeState: TreeState }) {
   const treeNodeAtoms = React.useMemo(
     () =>
-      atom((get) => Array.from(get(treeState.atoms.treeMapAtom).values()).map((atom) => get(atom))),
+      atom((get) =>
+        Array.from(get(treeState.atoms.treeMapAtom).values()).map((atom) => get(atom as any))
+      ),
     [treeState.atoms.treeMapAtom]
   )
   const treeNodes = useAtomValue(treeNodeAtoms)

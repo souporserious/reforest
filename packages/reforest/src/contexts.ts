@@ -43,6 +43,6 @@ export const TreeAtomsContext = React.createContext<{
 
 TreeAtomsContext.displayName = "TreeAtomsContext"
 
-export const TreeMapContext = React.createContext<Map<string, any>>(new Map())
+export const TreeMapContext = React.createContext<Map<string, any> | null>(null)
 
 TreeMapContext.displayName = "TreeMapContext"

@@ -46,8 +46,9 @@ export function useTreeState() {
     () =>
       atom((get) => {
         const computedMap = get(computedTreeMapAtom)
+        const treeMapEntries = Array.from(get(treeMapAtom).entries())
 
-        return Array.from(get(treeMapAtom).entries()).map(([treeId, atom]) => [
+        return treeMapEntries.map(([treeId, atom]) => [
           treeId,
           Object.assign({ computed: computedMap.get(treeId), treeId }, get(atom as any)),
         ])
@@ -91,15 +92,18 @@ export type TreeState = ReturnType<typeof useTreeState>
  */
 export function useTree(children: React.ReactNode, parentTreeState?: TreeState) {
   const defaultTreeState = useTreeState()
+  const [treeMap] = React.useState(() => new Map<string, Record<string, any>>())
   const treeState = parentTreeState || defaultTreeState
   const parentContextValue = React.useContext(TreeAtomsContext)
   const parsedContextValue = parentContextValue || treeState.atoms
   const isRoot = parentContextValue === null
   const indexedChildren = useIndexedChildren(children)
   const childrenToRender = isRoot ? (
-    <TreeAtomsContext.Provider value={parsedContextValue}>
-      {indexedChildren}
-    </TreeAtomsContext.Provider>
+    <TreeMapContext.Provider value={treeMap}>
+      <TreeAtomsContext.Provider value={parsedContextValue}>
+        {indexedChildren}
+      </TreeAtomsContext.Provider>
+    </TreeMapContext.Provider>
   ) : (
     indexedChildren
   )
@@ -122,7 +126,7 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
   const treeMapContext = React.useContext(TreeMapContext)
   const treeId = React.useId()
 
-  if (treeAtomsContext === null) {
+  if (treeAtomsContext === null || treeMapContext === null) {
     throw new Error("useTreeData must be used in a descendant component of useTree.")
   }
 
