@@ -124,7 +124,7 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
 ) {
   const treeAtomsContext = React.useContext(TreeAtomsContext)
   const treeMapContext = React.useContext(TreeMapContext)
-  const treeId = React.useId()
+  const treeId = React.useId().slice(1, -1)
 
   if (treeAtomsContext === null || treeMapContext === null) {
     throw new Error("useTreeData must be used in a descendant component of useTree.")

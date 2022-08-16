@@ -3,6 +3,9 @@ import { flat } from "tree-visit"
 import { useTree, useTreeData } from "reforest"
 import { scroll, timeline } from "motion"
 
+const isServer = typeof window === "undefined"
+const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
+
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
 function Timeline({
@@ -14,7 +17,7 @@ function Timeline({
 }) {
   const tree = useTree(childrenProp)
 
-  React.useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const ids = new Set()
     let totalDuration = 0
 
