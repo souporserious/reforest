@@ -8,10 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
-    "@types/node": "^18.7.3",
+    "@types/node": "^18.7.6",
     "@types/react": "^18.0.17",
     "jotai": "^1.7.8",
-    "motion": "^10.13.3",
+    "motion": "^10.14.0",
     "next": "^12.2.5",
     "next-transpile-modules": "^9.0.0",
     "react": "*",
