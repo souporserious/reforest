@@ -17,11 +17,42 @@ export function parseIndexPath(indexPathString: string) {
   return indexPathString.split(".").map((index) => parseInt(index, 10))
 }
 
+/**
+ * Compares two index path strings.
+ * Credit: https://twitter.com/katylava/status/1558222958702780418
+ */
+export function compareIndexPaths(a: string = "", b: string = "") {
+  let aArray = a.split(".").map(Number)
+  let bArray = b.split(".").map(Number)
+
+  if (aArray.includes(NaN) || bArray.includes(NaN)) {
+    throw "Version contains parts that are not numbers"
+  }
+
+  const maxLength = Math.max(a.length, b.length)
+
+  /** Make sure arrays are the same length by padding shorter one with Os. */
+  aArray = Array.from({ ...aArray, length: maxLength }, (value) => value ?? 0)
+  bArray = Array.from({ ...bArray, length: maxLength }, (value) => value ?? 0)
+
+  for (let i = 0; i < maxLength; i++) {
+    const difference = aArray[i] - bArray[i]
+
+    if (difference === 0) {
+      continue
+    }
+
+    return difference > 0 ? 1 : -1
+  }
+
+  return 0
+}
+
 /** Recursive function that removes "id" and "parentId" keys and returns each indexed data. */
 export function cleanAndSortTree(tree: any) {
   if (tree.children?.length > 0) {
     /** Sort children by the index path. */
-    tree.children.sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+    tree.children.sort((a, b) => compareIndexPaths(a.indexPathString, b.indexPathString))
 
     return {
       ...tree.data,
@@ -51,8 +82,8 @@ export function mapToChildren(dataMap: Map<string, any>) {
 
 /** Sorts a map by an indexPathString property. */
 export function sortMapByIndexPath(treeMap: Map<string, any>) {
-  const sortedEntries = Array.from(treeMap.entries()).sort(
-    (a, b) => parseFloat(a[1].indexPathString) - parseFloat(b[1].indexPathString)
+  const sortedEntries = Array.from(treeMap.entries()).sort((a, b) =>
+    compareIndexPaths(a[1].indexPathString, b[1].indexPathString)
   )
 
   return new Map(sortedEntries)
@@ -65,6 +96,6 @@ export function flattenChildren(children: any[], _shouldSort: boolean = true) {
   )
 
   return _shouldSort
-    ? flatChildren.sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+    ? flatChildren.sort((a, b) => compareIndexPaths(a.indexPathString, b.indexPathString))
     : flatChildren
 }

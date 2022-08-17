@@ -1,6 +1,6 @@
 import * as React from "react"
 import { flat } from "tree-visit"
-import { useTree, useTreeData } from "reforest"
+import { compareIndexPaths, useTree, useTreeData } from "reforest"
 import { scroll, timeline } from "motion"
 
 const isServer = typeof window === "undefined"
@@ -30,7 +30,7 @@ function Timeline({
         const sequences = flat(scene, {
           getChildren: (node) => node?.children || [],
         })
-          .sort((a, b) => parseFloat(a.indexPathString) - parseFloat(b.indexPathString))
+          .sort((a, b) => compareIndexPaths(a.indexPathString, b.indexPathString))
           .slice(1)
 
         const keyframes = sequences.map((keyframe) => {
