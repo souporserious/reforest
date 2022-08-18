@@ -1,7 +1,7 @@
 import * as React from "react"
 import { suspend } from "suspend-react"
 
-import { ComputedDataContext, TreeMapContext } from "./contexts"
+import { TreeComputedDataContext, TreeMapContext } from "./contexts"
 import { isServer, sortMapByIndexPath } from "./utils"
 
 const DATA_ID = "__REFOREST_DATA__"
@@ -23,9 +23,9 @@ export function createTreeProvider(initialEntries?: [string, any][]) {
 
   function TreeProvider(props: { children: React.ReactNode }) {
     return (
-      <ComputedDataContext.Provider value={treeComputedData}>
+      <TreeComputedDataContext.Provider value={treeComputedData}>
         {props.children}
-      </ComputedDataContext.Provider>
+      </TreeComputedDataContext.Provider>
     )
   }
 
@@ -50,7 +50,7 @@ export function useServerComputedData<TreeValue extends any, ComputedTreeValue e
   computeData?: (treeMap: Map<string, TreeValue>, treeId: string) => ComputedTreeValue
 ) {
   const treeMap = React.useContext(TreeMapContext)
-  const treeComputedData = React.useContext(ComputedDataContext)
+  const treeComputedData = React.useContext(TreeComputedDataContext)
 
   /** Use Suspense to re-render the component before committing the final props on the server. */
   const isServerWithComputedData = isServer && treeMap && computeData !== undefined
