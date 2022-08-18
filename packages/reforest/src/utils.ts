@@ -31,12 +31,8 @@ export function compareIndexPaths(a: string = "", b: string = "") {
 
   const maxLength = Math.max(a.length, b.length)
 
-  /** Make sure arrays are the same length by padding shorter one with Os. */
-  aArray = Array.from({ ...aArray, length: maxLength }, (value) => value ?? 0)
-  bArray = Array.from({ ...bArray, length: maxLength }, (value) => value ?? 0)
-
   for (let index = 0; index < maxLength; index++) {
-    const difference = aArray[index] - bArray[index]
+    const difference = (aArray[index] ?? 0) - (bArray[index] ?? 0)
 
     if (difference === 0) {
       continue
