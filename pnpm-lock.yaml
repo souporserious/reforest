@@ -40,44 +40,42 @@ importers:
     specifiers:
       '@types/node': ^18.7.6
       '@types/react': ^18.0.17
-      jotai: ^1.7.8
       motion: ^10.14.0
       next: ^12.2.5
       next-transpile-modules: ^9.0.0
       react: '*'
       react-dom: '*'
       reforest: workspace:*
-      suspend-react: ^0.0.8
-      tree-visit: ^0.1.2
       typescript: ^4.7.4
+      valtio: ^1.6.3
     dependencies:
       '@types/node': 18.7.6
       '@types/react': 18.0.17
-      jotai: 1.7.8_react@18.2.0
       motion: 10.14.0
       next: 12.2.5_biqbaboplfbrettd7655fr4n2y
       next-transpile-modules: 9.0.0
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
       reforest: link:../reforest
-      suspend-react: 0.0.8_react@18.2.0
-      tree-visit: 0.1.2
       typescript: 4.7.4
+      valtio: 1.6.3_react@18.2.0
 
   packages/reforest:
     specifiers:
       '@jsxui/layout': ^0.1.3
-      jotai: ^1.7.8
       performant-array-to-tree: ^1.11.0
+      proxy-memoize: ^1.2.0
       react: '*'
       react-dom: '*'
       suspend-react: ^0.0.8
       tsup: ^6.2.2
       typescript: '*'
+      valtio: ^1.6.3
     dependencies:
-      jotai: 1.7.8_react@18.2.0
       performant-array-to-tree: 1.11.0
+      proxy-memoize: 1.2.0
       suspend-react: 0.0.8_react@18.2.0
+      valtio: 1.6.3_react@18.2.0
     devDependencies:
       '@jsxui/layout': 0.1.3
       react: 18.2.0
@@ -2843,43 +2841,6 @@ packages:
       - ts-node
     dev: true
 
-  /jotai/1.7.8_react@18.2.0:
-    resolution: {integrity: sha512-rXwWz6uLqyZUCRzWIPiYTjI1hjskVxVpDN3lBoOHi66z6uQFkFmKwR8YhcQd+Ex4lODlReuKNIx6WwsF9aKy3g==}
-    engines: {node: '>=12.7.0'}
-    peerDependencies:
-      '@babel/core': '*'
-      '@babel/template': '*'
-      '@tanstack/query-core': '*'
-      '@urql/core': '*'
-      immer: '*'
-      optics-ts: '*'
-      react: '>=16.8'
-      valtio: '*'
-      wonka: '*'
-      xstate: '*'
-    peerDependenciesMeta:
-      '@babel/core':
-        optional: true
-      '@babel/template':
-        optional: true
-      '@tanstack/query-core':
-        optional: true
-      '@urql/core':
-        optional: true
-      immer:
-        optional: true
-      optics-ts:
-        optional: true
-      valtio:
-        optional: true
-      wonka:
-        optional: true
-      xstate:
-        optional: true
-    dependencies:
-      react: 18.2.0
-    dev: false
-
   /joycon/3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -3361,6 +3322,20 @@ packages:
       sisteransi: 1.0.5
     dev: true
 
+  /proxy-compare/2.2.0:
+    resolution: {integrity: sha512-hEtMJevUmOByZCTw1NRUVaWWHCGJLO0ogizpey8yX6zMPolDe8YVa+PHgMOTiZuyUkFj+hMKs/1UaM0+ZkuvgA==}
+    dev: false
+
+  /proxy-compare/2.3.0:
+    resolution: {integrity: sha512-c3L2CcAi7f7pvlD0D7xsF+2CQIW8C3HaYx2Pfgq8eA4HAl3GAH6/dVYsyBbYF/0XJs2ziGLrzmz5fmzPm6A0pQ==}
+    dev: false
+
+  /proxy-memoize/1.2.0:
+    resolution: {integrity: sha512-0heYEZb4yMfhdduz8T+BPJOCKGukc81WRJaYF0k6ZsJz/NkPLhGFqe6OLdiZURr5kC1byps5wdqLN6DC2tYAFw==}
+    dependencies:
+      proxy-compare: 2.3.0
+    dev: false
+
   /psl/1.9.0:
     resolution: {integrity: sha512-E/ZsdU4HLs/68gYzgGTkMicWTLPdAftJLfJFlLUAAKZGkStNU72sZjT66SnMDVOfOWY/YAoiD7Jxa9iHvngcag==}
     dev: true
@@ -3767,6 +3742,7 @@ packages:
 
   /tree-visit/0.1.2:
     resolution: {integrity: sha512-uyeYL92ZHERjB28jTlV1swfGj9BfxF0tJunlJ4eHRtWFyWyLWC7/FOs6/HLDDITHIbTQlhU0qWiePYtCc9zczA==}
+    dev: true
 
   /ts-interface-checker/0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
@@ -3999,6 +3975,35 @@ packages:
       '@types/istanbul-lib-coverage': 2.0.4
       convert-source-map: 1.8.0
     dev: true
+
+  /valtio/1.6.3_react@18.2.0:
+    resolution: {integrity: sha512-ySg2q5nFFSY0zSm/a/sxEGHshWGGvelo4m4y/oAlO92fuXZ9WHSi0J214P3ZDjDiveGp08wck0qJZcA2ubEj+Q==}
+    engines: {node: '>=12.7.0'}
+    peerDependencies:
+      '@babel/helper-module-imports': '>=7.12'
+      '@babel/types': '>=7.13'
+      aslemammad-vite-plugin-macro: '>=1.0.0-alpha.1'
+      babel-plugin-macros: '>=3.0'
+      react: '>=16.8'
+      vite: '>=2.8.6'
+    peerDependenciesMeta:
+      '@babel/helper-module-imports':
+        optional: true
+      '@babel/types':
+        optional: true
+      aslemammad-vite-plugin-macro:
+        optional: true
+      babel-plugin-macros:
+        optional: true
+      react:
+        optional: true
+      vite:
+        optional: true
+    dependencies:
+      proxy-compare: 2.2.0
+      react: 18.2.0
+      use-sync-external-store: 1.2.0_react@18.2.0
+    dev: false
 
   /w3c-hr-time/1.0.2:
     resolution: {integrity: sha512-z8P5DvDNjKDoFIHK7q8r8lackT6l+jo/Ye3HOle7l9nICP9lf1Ci25fy9vHd0JOWewkIFzXIEig3TdKT7JQ5fQ==}

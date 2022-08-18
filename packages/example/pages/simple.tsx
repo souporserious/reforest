@@ -1,18 +1,11 @@
 import * as React from "react"
 import type { TreeState } from "reforest"
-import { useTree, useTreeData, useTreeState } from "reforest"
-import { atom, useAtomValue } from "jotai"
+import { useTree, useTreeData, useTreeSnapshot, useTreeState } from "reforest"
 
 function TotalDuration({ treeState }: { treeState: TreeState }) {
-  const treeNodeAtoms = React.useMemo(
-    () =>
-      atom((get) =>
-        Array.from(get(treeState.atoms.treeMapAtom).values()).map((atom) => get(atom as any))
-      ),
-    [treeState.atoms.treeMapAtom]
-  )
-  const treeNodes = useAtomValue(treeNodeAtoms)
-  const totalDuration = treeNodes.reduce((total, node: any) => total + node.duration, 0) as number
+  const totalDuration = useTreeSnapshot(treeState, (treeMap) => {
+    return Array.from(treeMap.values()).reduce((total, node: any) => total + node.duration, 0)
+  })
 
   return <div>Total Duration: {totalDuration}</div>
 }

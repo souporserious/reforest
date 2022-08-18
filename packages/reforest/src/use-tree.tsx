@@ -1,10 +1,54 @@
 import * as React from "react"
-import { atom, useAtomValue, useSetAtom } from "jotai"
+import { useSnapshot } from "valtio"
 
-import { TreeAtomsContext, TreeMapContext } from "./contexts"
+import { TreeStateContext, TreeMapContext, createInitialTreeState } from "./contexts"
 import { useServerComputedData } from "./server"
 import { useIndex, useIndexedChildren } from "./use-indexed-children"
-import { isServer, mapToChildren, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
+import { isServer, useIsomorphicLayoutEffect } from "./utils"
+
+/** Callback when the tree map is. */
+export function useTreeEffect(
+  treeState: TreeState | null,
+  callback: (treeMap: Map<string, any>) => void | (() => void),
+  dependencies: React.DependencyList = []
+) {
+  const contextTreeState = React.useContext(TreeStateContext)
+  const parsedTreeState = treeState || contextTreeState
+
+  if (parsedTreeState === null) {
+    throw new Error("treeState must be defined")
+  }
+
+  const snapshot = useSnapshot(parsedTreeState)
+
+  useIsomorphicLayoutEffect(() => {
+    const treeMap = new Map(snapshot.treeMap)
+
+    return callback(treeMap)
+  }, dependencies.concat(snapshot))
+}
+
+/** Get the current tree map with optional computed data. */
+export function useTreeSnapshot<ComputedData extends any>(
+  treeState: TreeState | null,
+  computeData?: (treeMap: Map<string, any>) => ComputedData,
+  dependencies: React.DependencyList = []
+) {
+  const contextTreeState = React.useContext(TreeStateContext)
+  const parsedTreeState = treeState || contextTreeState
+
+  if (parsedTreeState === null) {
+    throw new Error("treeState must be defined")
+  }
+
+  const snapshot = useSnapshot(parsedTreeState)
+
+  return React.useMemo(() => {
+    const treeMap = new Map(snapshot.treeMap)
+
+    return computeData ? computeData(treeMap) : treeMap
+  }, dependencies.concat(snapshot)) as ComputedData
+}
 
 /**
  * Control tree state from outside a component.
@@ -35,41 +79,9 @@ import { isServer, mapToChildren, sortMapByIndexPath, useIsomorphicLayoutEffect 
  * }
  */
 export function useTreeState() {
-  /** Tree map collects all leaf nodes. */
-  const [treeMapAtom] = React.useState(() => atom(new Map<string, Record<string, any>>()))
+  const [treeState] = React.useState(() => createInitialTreeState())
 
-  /** Computed tree map collects all leaf node data computed from the tree map above. */
-  const [computedTreeMapAtom] = React.useState(() => atom(new Map<string, any>()))
-
-  /** Stitch the computed data together into a new tree map. */
-  const treeMapEntriesAtom = React.useMemo(
-    () =>
-      atom((get) => {
-        const computedMap = get(computedTreeMapAtom)
-        const treeMapEntries = Array.from(get(treeMapAtom).entries())
-
-        return treeMapEntries.map(([treeId, atom]) => [
-          treeId,
-          Object.assign({ computed: computedMap.get(treeId), treeId }, get(atom as any)),
-        ])
-      }),
-    [treeMapAtom, computedTreeMapAtom]
-  )
-
-  const atoms = React.useMemo(
-    () => ({
-      computedTreeMapAtom,
-      treeMapAtom,
-      treeMapEntriesAtom,
-    }),
-    [computedTreeMapAtom, treeMapAtom, treeMapEntriesAtom]
-  )
-
-  const treeMapEntries = useAtomValue(treeMapEntriesAtom)
-  const treeMap = new Map(treeMapEntries as any) as Map<string, Record<string, any>>
-  const treeChildren = mapToChildren(treeMap as any) as Array<any>
-
-  return { atoms, treeMap, treeChildren }
+  return treeState
 }
 
 export type TreeState = ReturnType<typeof useTreeState>
@@ -93,16 +105,15 @@ export type TreeState = ReturnType<typeof useTreeState>
 export function useTree(children: React.ReactNode, parentTreeState?: TreeState) {
   const defaultTreeState = useTreeState()
   const [treeMap] = React.useState(() => new Map<string, Record<string, any>>())
-  const treeState = parentTreeState || defaultTreeState
-  const parentContextValue = React.useContext(TreeAtomsContext)
-  const parsedContextValue = parentContextValue || treeState.atoms
-  const isRoot = parentContextValue === null
+  const treeStateContextValue = React.useContext(TreeStateContext)
+  const parsedContextValue = treeStateContextValue || parentTreeState || defaultTreeState
+  const isRoot = treeStateContextValue === null
   const indexedChildren = useIndexedChildren(children)
   const childrenToRender = isRoot ? (
     <TreeMapContext.Provider value={treeMap}>
-      <TreeAtomsContext.Provider value={parsedContextValue}>
+      <TreeStateContext.Provider value={parsedContextValue}>
         {indexedChildren}
-      </TreeAtomsContext.Provider>
+      </TreeStateContext.Provider>
     </TreeMapContext.Provider>
   ) : (
     indexedChildren
@@ -110,8 +121,7 @@ export function useTree(children: React.ReactNode, parentTreeState?: TreeState) 
 
   return {
     children: childrenToRender,
-    treeMap: treeState.treeMap,
-    treeChildren: treeState.treeChildren,
+    state: parsedContextValue,
     isRoot,
   }
 }
@@ -122,79 +132,36 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
   computeData?: (treeMap: Map<string, TreeValue>, treeId: string) => ComputedTreeValue,
   dependencies: React.DependencyList = []
 ) {
-  const treeAtomsContext = React.useContext(TreeAtomsContext)
+  const treeState = React.useContext(TreeStateContext)
   const treeMapContext = React.useContext(TreeMapContext)
   const treeId = React.useId().slice(1, -1)
 
-  if (treeAtomsContext === null || treeMapContext === null) {
+  if (treeState === null) {
     throw new Error("useTreeData must be used in a descendant component of useTree.")
   }
 
   const index = useIndex()!
   const indexPathString = index.indexPathString
-  const treeAtom = React.useMemo(
-    () => atom(Object.assign({ indexPathString }, data)),
-    [data, indexPathString]
-  )
 
-  const setTreeMapAtom = useSetAtom(treeAtomsContext.treeMapAtom)
-  const setComputedTreeMapAtom = useSetAtom(treeAtomsContext.computedTreeMapAtom)
-
-  /** Subscribe tree data to root map on the server and client. */
+  /**
+   * Subscribe tree data to root map on the server and client.
+   * Note, treeMapContext is for the server and treeMapAtom is for the client.
+   */
   if (isServer) {
-    treeMapContext?.set(treeId, Object.assign({ indexPathString, treeId }, data))
+    treeMapContext.set(treeId, Object.assign({ indexPathString, treeId }, data))
   }
 
   useIsomorphicLayoutEffect(() => {
-    treeMapContext.set(treeId, Object.assign({ indexPathString, treeId }, data))
-
-    setTreeMapAtom((currentMap) => {
-      const nextMap = new Map(currentMap)
-      nextMap.set(treeId, treeAtom)
-      return nextMap
-    })
-
-    return () => {
-      treeMapContext.delete(treeId)
-
-      setTreeMapAtom((currentMap) => {
-        const nextMap = new Map(currentMap)
-        nextMap.delete(treeId)
-        return nextMap
-      })
-    }
-  }, [treeAtom])
-
-  const treeMap = useAtomValue(treeAtomsContext.treeMapAtom)
-  const clientComputedData = React.useMemo(() => {
-    const sortedTreeMap = sortMapByIndexPath(treeMapContext)
-
-    /**
-     * Tree map size is used to determine if this is initial hydration to make sure
-     * the server value is used first.
-     */
-    return computeData && treeMap.size > 0 ? computeData(sortedTreeMap, treeId) : null
-  }, dependencies.concat([treeMap, data]))
+    return treeState.subscribeTreeData(treeId, Object.assign({ indexPathString, treeId }, data))
+  }, [treeState, treeId, data])
 
   /** Compute data from all collected tree data in parent map. */
   const serverComputedData = useServerComputedData(treeId, computeData)
-
-  useIsomorphicLayoutEffect(() => {
-    setComputedTreeMapAtom((currentMap) => {
-      const nextMap = new Map(currentMap)
-      nextMap.set(treeId, clientComputedData)
-      return nextMap
-    })
-
-    return () => {
-      setComputedTreeMapAtom((currentMap) => {
-        const nextMap = new Map(currentMap)
-        nextMap.delete(treeId)
-        return nextMap
-      })
-    }
-  }, [clientComputedData, treeId])
-
+  const clientComputedData = useTreeSnapshot(
+    null,
+    (treeMap) => (computeData && treeMap.size > 0 ? computeData(treeMap, treeId) : null),
+    dependencies
+  )
   const computedData = (clientComputedData || serverComputedData) as ComputedTreeValue
 
   return {

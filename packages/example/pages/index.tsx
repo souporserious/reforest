@@ -1,10 +1,6 @@
 import * as React from "react"
-import { flat } from "tree-visit"
-import { compareIndexPaths, useTree, useTreeData } from "reforest"
+import { flattenChildren, mapToChildren, useTree, useTreeEffect, useTreeData } from "reforest"
 import { scroll, timeline } from "motion"
-
-const isServer = typeof window === "undefined"
-const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
 
@@ -17,63 +13,67 @@ function Timeline({
 }) {
   const tree = useTree(childrenProp)
 
-  useIsomorphicLayoutEffect(() => {
-    const ids = new Set()
-    let totalDuration = 0
+  useTreeEffect(
+    tree.state,
+    (treeMap) => {
+      const ids = new Set()
+      let totalDuration = 0
 
-    if (tree.treeChildren === null) {
-      return
-    }
+      const sceneKeyframes = mapToChildren(treeMap)
+        .flatMap((scene) => {
+          const sequences = flattenChildren(scene.children)
+          const keyframes = sequences.map((keyframe) => {
+            const {
+              id,
+              treeId,
+              delay = 0,
+              width,
+              height,
+              scale,
+              backgroundColor,
+              opacity,
+            } = keyframe
+            const styles = {
+              width,
+              height,
+              scale,
+              opacity,
+              backgroundColor,
+              transform: "translate(0px, 0px)",
+            }
+            const options = { duration: scene.duration, at: totalDuration, delay }
+            const hasId = ids.has(id)
+            const parsedId = id || treeId
 
-    const sceneKeyframes = tree.treeChildren
-      .flatMap((scene) => {
-        const sequences = flat(scene, {
-          getChildren: (node) => node?.children || [],
+            if (hasId) {
+              const bounds = document.getElementById(id)?.getBoundingClientRect()
+              const xOffset = window.scrollX + (bounds?.x || 0)
+              const yOffset = window.scrollY + (bounds?.y || 0)
+
+              styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+            } else {
+              ids.add(id)
+            }
+
+            return [`#${parsedId}`, styles, options]
+          })
+
+          totalDuration += scene.duration
+
+          return keyframes
         })
-          .sort((a, b) => compareIndexPaths(a.indexPathString, b.indexPathString))
-          .slice(1)
+        .filter(Boolean)
 
-        const keyframes = sequences.map((keyframe) => {
-          const { id, treeId, delay = 0, width, height, scale, backgroundColor, opacity } = keyframe
-          const styles = {
-            width,
-            height,
-            scale,
-            opacity,
-            backgroundColor,
-            transform: "translate(0px, 0px)",
-          }
-          const options = { duration: scene.duration, at: totalDuration, delay }
-          const hasId = ids.has(id)
-          const parsedId = id || treeId
+      if (sceneKeyframes) {
+        const controls = timeline(sceneKeyframes as any)
 
-          if (hasId) {
-            const bounds = document.getElementById(id)?.getBoundingClientRect()
-            const xOffset = window.scrollX + (bounds?.x || 0)
-            const yOffset = window.scrollY + (bounds?.y || 0)
-
-            styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-          } else {
-            ids.add(id)
-          }
-
-          return [`#${parsedId}`, styles, options]
-        })
-
-        totalDuration += scene.duration
-
-        return keyframes
-      })
-      .filter(Boolean)
-
-    if (sceneKeyframes) {
-      const controls = timeline(sceneKeyframes as any)
-
-      if (scrollProp && controls.pause) {
-        return scroll(controls)
+        if (scrollProp && controls.pause) {
+          return scroll(controls)
+        }
       }
-    }
-  }, [scrollProp, tree.treeChildren])
+    },
+    [scrollProp]
+  )
 
   const styles = {
     display: "grid",

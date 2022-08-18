@@ -26,7 +26,7 @@ export function compareIndexPaths(a: string = "", b: string = "") {
   let bArray = b.split(".").map(Number)
 
   if (aArray.includes(NaN) || bArray.includes(NaN)) {
-    throw "Version contains parts that are not numbers"
+    throw new Error("Version contains parts that are not numbers")
   }
 
   const maxLength = Math.max(a.length, b.length)
@@ -35,8 +35,8 @@ export function compareIndexPaths(a: string = "", b: string = "") {
   aArray = Array.from({ ...aArray, length: maxLength }, (value) => value ?? 0)
   bArray = Array.from({ ...bArray, length: maxLength }, (value) => value ?? 0)
 
-  for (let i = 0; i < maxLength; i++) {
-    const difference = aArray[i] - bArray[i]
+  for (let index = 0; index < maxLength; index++) {
+    const difference = aArray[index] - bArray[index]
 
     if (difference === 0) {
       continue
@@ -64,7 +64,7 @@ export function cleanAndSortTree(tree: any) {
 }
 
 /** Builds an array of trees from a Map of data collected in useTree. */
-export function mapToChildren(dataMap: Map<string, any>) {
+export function mapToChildren(dataMap: Map<string, any>): Array<any> {
   const parsedValues = Array.from(dataMap.values()).map((data) => {
     const parentIndexPathString = parseIndexPath(data.indexPathString).slice(0, -1).join(".")
 
@@ -77,7 +77,7 @@ export function mapToChildren(dataMap: Map<string, any>) {
   const tree = arrayToTree(parsedValues, { dataField: null })
   const cleanedTree = cleanAndSortTree({ children: tree })
 
-  return cleanedTree ? cleanedTree.children : null
+  return cleanedTree ? cleanedTree.children : []
 }
 
 /** Sorts a map by an indexPathString property. */
