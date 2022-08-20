@@ -159,8 +159,12 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
   const serverComputedData = useServerComputedData(treeId, computeData)
   const clientComputedData = useTreeSnapshot(
     null,
-    (treeMap) =>
-      computeData && treeMap.size > 0 ? computeData(sortMapByIndexPath(treeMap), treeId) : null,
+    (treeMap) => {
+      /** If tree map size is 0 wait to render client data until the initial server render hyrdates to avoid mismatches. */
+      const initialHydration = treeMap.size === 0
+
+      return computeData && !initialHydration ? computeData(treeMap, treeId) : null
+    },
     dependencies
   )
   const computedData = (clientComputedData || serverComputedData) as ComputedTreeValue
