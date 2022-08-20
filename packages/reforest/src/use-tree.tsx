@@ -4,7 +4,7 @@ import { useSnapshot } from "valtio"
 import { TreeStateContext, TreeMapContext, createInitialTreeState } from "./contexts"
 import { useServerComputedData } from "./server"
 import { useIndex, useIndexedChildren } from "./use-indexed-children"
-import { isServer, useIsomorphicLayoutEffect } from "./utils"
+import { isServer, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
 
 /** Callback when the tree map is. */
 export function useTreeEffect(
@@ -22,7 +22,7 @@ export function useTreeEffect(
   const snapshot = useSnapshot(parsedTreeState)
 
   useIsomorphicLayoutEffect(() => {
-    const treeMap = new Map(snapshot.treeMap)
+    const treeMap = sortMapByIndexPath(snapshot.treeMap)
 
     return callback(treeMap)
   }, dependencies.concat(snapshot))
@@ -44,7 +44,7 @@ export function useTreeSnapshot<ComputedData extends any>(
   const snapshot = useSnapshot(parsedTreeState)
 
   return React.useMemo(() => {
-    const treeMap = new Map(snapshot.treeMap)
+    const treeMap = sortMapByIndexPath(snapshot.treeMap)
 
     return computeData ? computeData(treeMap) : treeMap
   }, dependencies.concat(snapshot)) as ComputedData
@@ -159,7 +159,8 @@ export function useTreeData<TreeValue extends any, ComputedTreeValue extends any
   const serverComputedData = useServerComputedData(treeId, computeData)
   const clientComputedData = useTreeSnapshot(
     null,
-    (treeMap) => (computeData && treeMap.size > 0 ? computeData(treeMap, treeId) : null),
+    (treeMap) =>
+      computeData && treeMap.size > 0 ? computeData(sortMapByIndexPath(treeMap), treeId) : null,
     dependencies
   )
   const computedData = (clientComputedData || serverComputedData) as ComputedTreeValue
