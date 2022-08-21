@@ -1,8 +1,9 @@
 import * as React from "react"
-import { ref, proxy } from "valtio"
-import { proxyMap } from "valtio/utils"
+import type { UseBoundStore, StoreApi } from "zustand"
 
-import { DATA_ID, isServer } from "./utils"
+export const PreRenderContext = React.createContext(false)
+
+PreRenderContext.displayName = "PreRenderContext"
 
 export const MaxIndexContext = React.createContext<number[]>([])
 
@@ -12,59 +13,16 @@ export const IndexContext = React.createContext<string | null>(null)
 
 IndexContext.displayName = "IndexContext"
 
-/** Gets the initial computed data from the injected script tag. */
-export function getInitialComputedData() {
-  let serverEntries: [string, any][] = []
-
-  /** Hydrate data if available in document head. */
-  if (!isServer) {
-    const serverJSON = document.getElementById(DATA_ID)?.innerHTML
-
-    if (serverJSON) {
-      const serverComputedData = JSON.parse(serverJSON)
-
-      if (serverComputedData) {
-        serverEntries = Object.entries(serverComputedData)
-      }
-    }
-  }
-
-  return new Map(serverEntries)
-}
-
-export const TreeComputedDataContext = React.createContext<Map<string, any>>(
-  getInitialComputedData()
-)
-
-TreeComputedDataContext.displayName = "TreeComputedDataContext"
-
-export function createInitialTreeState() {
-  const initialEntries: any = []
-  const state = proxy<{
-    treeMap: Map<string, any>
-    subscribeTreeData: (key: string, value: any) => () => void
-  }>({
-    treeMap: proxyMap<string, any>(initialEntries),
-    subscribeTreeData: (key: string, value: any) => {
-      state.treeMap.set(key, ref(value))
-      return () => {
-        state.treeMap.delete(key)
-      }
-    },
-  })
-
-  return state
-}
-
-export type TreeStateContextValue = {
+export type TreeState = {
   treeMap: Map<string, any>
-  subscribeTreeData: (key: string, value: any) => () => void
+  shouldPreRender: boolean
+  clearTreeData: () => void
+  setTreeData: (key: string, value: any, shouldUpdate?: boolean) => void
+  deleteTreeData: (key: string, shouldUpdate?: boolean) => void
 }
 
-export const TreeStateContext = React.createContext<TreeStateContextValue | null>(null)
+export type TreeStateStore = UseBoundStore<StoreApi<TreeState>>
+
+export const TreeStateContext = React.createContext<TreeStateStore | null>(null)
 
 TreeStateContext.displayName = "TreeStateContext"
-
-export const TreeMapContext = React.createContext<Map<string, any>>(new Map())
-
-TreeMapContext.displayName = "TreeMapContext"

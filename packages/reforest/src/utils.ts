@@ -1,8 +1,6 @@
 import * as React from "react"
 import { arrayToTree } from "performant-array-to-tree"
 
-export const DATA_ID = "__REFOREST_DATA__"
-
 export const isServer = typeof window === "undefined"
 
 export const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
@@ -61,13 +59,13 @@ export function cleanAndSortTree(tree: any) {
 
 /** Builds an array of trees from a Map of data collected in useTree. */
 export function mapToChildren(dataMap: Map<string, any>): Array<any> {
-  const parsedValues = Array.from(dataMap.values()).map((data) => {
-    const parentIndexPathString = parseIndexPath(data.indexPathString).slice(0, -1).join(".")
+  const parsedValues = Array.from(dataMap.entries()).map(([indexPathString, data]) => {
+    const parentIndexPathString = parseIndexPath(indexPathString).slice(0, -1).join(".")
 
     return {
       data,
       parentId: parentIndexPathString,
-      id: data.indexPathString,
+      id: indexPathString,
     }
   })
   const tree = arrayToTree(parsedValues, { dataField: null })
@@ -78,20 +76,16 @@ export function mapToChildren(dataMap: Map<string, any>): Array<any> {
 
 /** Sorts a map by an indexPathString property. */
 export function sortMapByIndexPath(treeMap: Map<string, any>) {
-  const sortedEntries = Array.from(treeMap.entries()).sort((a, b) =>
-    compareIndexPaths(a[1].indexPathString, b[1].indexPathString)
-  )
+  const sortedEntries = Array.from(treeMap.entries()).sort((a, b) => compareIndexPaths(a[0], b[0]))
 
   return new Map(sortedEntries)
 }
 
-/** Flattens and sorts all tree nodes into one array. */
-export function flattenChildren(children: any[], _shouldSort: boolean = true) {
+/** Flattens all tree nodes into one array. */
+export function flattenChildren(children: any[]) {
   const flatChildren = children.flatMap((child) =>
     child.children ? flattenChildren(child.children) : [child]
   )
 
-  return _shouldSort
-    ? flatChildren.sort((a, b) => compareIndexPaths(a.indexPathString, b.indexPathString))
-    : flatChildren
+  return flatChildren
 }
