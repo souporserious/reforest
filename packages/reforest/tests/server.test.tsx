@@ -1,50 +1,23 @@
 /** @jest-environment node */
 import * as React from "react"
-import * as ReactDOMServer from "react-dom/server"
-import { Writable } from "stream"
+import { renderToString } from "react-dom/server"
 
-import { createTreeProvider, useTree, useTreeData } from "../src"
-import { App } from "./App"
+import { useTree, useTreeData, useTreeState } from "../src"
 
-/** Simple render function to mock what renderToPipeableStream does. */
-function render(element: React.ReactNode) {
-  return new Promise((resolve) => {
-    let isReady = false
-    const response = new (class extends Writable {
-      _write(chunk, _, next) {
-        if (isReady) {
-          resolve(chunk.toString())
-        }
-        next()
-      }
-    })()
-    const stream = ReactDOMServer.renderToPipeableStream(element, {
-      onShellReady() {
-        stream.pipe(response)
-      },
-      onAllReady() {
-        isReady = true
-      },
-    })
-  })
-}
-
-test("computed data renders on server", async () => {
+test("computed data renders on server", () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
     const tree = useTree(children)
-    const treeData = useTreeData(
-      React.useMemo(() => ({ value }), [value]),
-      (treeMap) => {
-        if (treeMap) {
-          return treeMap.size
-        }
-        return 0
-      }
-    )
+    const treeData = useTreeData(() => ({ value }), [value])
+
+    if (treeData.isPreRender) {
+      return null
+    }
+
+    const treeMap = useTreeState((state) => state.treeMap)
 
     return (
       <div data-testid={treeData.treeId}>
-        {treeData.computed} {tree.children}
+        {treeMap.size} {tree.children}
       </div>
     )
   }
@@ -55,49 +28,43 @@ test("computed data renders on server", async () => {
     return tree.children
   }
 
-  const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
-  const renderedString = await render(
-    <React.Suspense fallback={null}>
-      <TreeProvider>
-        <ItemList>
-          <Item value="apple">Apple</Item>
-          <Item value="orange">Orange</Item>
-          <Item value="banana">Banana</Item>
-        </ItemList>
-      </TreeProvider>
-    </React.Suspense>
+  const renderedString = renderToString(
+    <ItemList>
+      <Item value="apple">Apple</Item>
+      <Item value="orange">Orange</Item>
+      <Item value="banana">Banana</Item>
+    </ItemList>
   )
 
   expect(renderedString).toMatchSnapshot()
-  expect(stringifyTreeComputedData()).toMatchSnapshot()
 })
 
-test("changing rendered elements based on computed data", async () => {
+test("changing rendered elements based on computed data", () => {
   function Box({ id }: { id: string }) {
-    const treeData = useTreeData(
-      React.useMemo(() => ({ id }), [id]),
-      (treeMap, treeId) => {
-        const ids = new Set()
-        let shouldRender = false
+    const { indexPathString, isPreRender } = useTreeData(() => ({ id }), [id])
 
-        treeMap?.forEach(({ id }, treeIdToCompare) => {
-          const isSameId = treeId === treeIdToCompare
-          const hasId = ids.has(id)
+    if (isPreRender) {
+      return null
+    }
 
-          if (isSameId) {
-            shouldRender = !hasId
-          }
+    const treeMap = useTreeState((state) => state.treeMap)
+    const ids = new Set()
+    let shouldRender = false
 
-          if (!hasId) {
-            ids.add(id)
-          }
-        })
+    treeMap.forEach((treeNode, treeNodeIndexPathString) => {
+      const isSameInstance = treeNodeIndexPathString === indexPathString
+      const hasId = ids.has(treeNode.id)
 
-        return { shouldRender }
+      if (isSameInstance) {
+        shouldRender = !hasId
       }
-    )
 
-    return treeData.computed.shouldRender ? <div id={id} /> : null
+      if (!hasId) {
+        ids.add(treeNode.id)
+      }
+    })
+
+    return shouldRender ? <div id={id} /> : null
   }
 
   function Parent({ children }: { children: React.ReactNode }) {
@@ -106,32 +73,14 @@ test("changing rendered elements based on computed data", async () => {
     return tree.children
   }
 
-  const { TreeProvider } = createTreeProvider()
-  const renderedString = await render(
-    <React.Suspense fallback={null}>
-      <TreeProvider>
-        <Parent>
-          <Box id="a" />
-          <Box id="b" />
-          <Box id="c" />
-          <Box id="b" />
-        </Parent>
-      </TreeProvider>
-    </React.Suspense>
+  const renderedString = renderToString(
+    <Parent>
+      <Box id="a" />
+      <Box id="b" />
+      <Box id="c" />
+      <Box id="b" />
+    </Parent>
   )
 
   expect(renderedString).toMatchSnapshot()
-})
-
-test("tree collection", async () => {
-  const { TreeProvider, stringifyTreeComputedData } = createTreeProvider()
-
-  const renderedString = await render(
-    <TreeProvider>
-      <App />
-    </TreeProvider>
-  )
-
-  expect(renderedString).toMatchSnapshot()
-  expect(stringifyTreeComputedData()).toMatchSnapshot()
 })

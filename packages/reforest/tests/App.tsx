@@ -36,12 +36,7 @@ function RootGrid({ children, columns, rows, width, height }: GridProps) {
 }
 
 function SubGrid({ children, columns, rows, width, height }: GridProps) {
-  const node = React.useMemo(
-    () => createGrid({ columns, rows, width, height }),
-    [columns, rows, width, height]
-  )
-
-  useTreeData(node)
+  useTreeData(() => createGrid({ columns, rows, width, height }))
 
   return <div style={{ width, height }}>{children}</div>
 }
@@ -69,13 +64,9 @@ function Column({
   width?: number
   height?: number
 }) {
-  const node = React.useMemo(
-    () => createColumn({ columns, rows, width, height }),
-    [columns, rows, width, height]
-  )
   const tree = useTree(children)
 
-  useTreeData(node)
+  useTreeData(() => createColumn({ columns, rows, width, height }))
 
   return tree.children
 }
@@ -93,21 +84,15 @@ function Row({
   width?: number
   height?: number
 }) {
-  const node = React.useMemo(
-    () => createRow({ columns, rows, width, height }),
-    [columns, rows, width, height]
-  )
   const tree = useTree(children)
 
-  useTreeData(node)
+  useTreeData(() => createRow({ columns, rows, width, height }))
 
   return tree.children
 }
 
 function Space({ size }: { size?: number }) {
-  const node = React.useMemo(() => createSpace({ size }), [size])
-
-  useTreeData(node)
+  useTreeData(() => createSpace({ size }))
 
   return null
 }
@@ -139,7 +124,6 @@ function Box({
   const computedLayout = computeLayout({ ...rootNode, children: treeChildren })
   const flattenedLayout = flattenLayout(computedLayout.layout)
   const nodeLayout = flattenedLayout?.children.find((node: any) => node.treeId === treeId)
-
   const computedStyles = {
     width: nodeLayout?.width,
     height: nodeLayout?.height,
@@ -152,18 +136,16 @@ function Box({
 
 export function App() {
   return (
-    <React.Suspense fallback={null}>
-      <Grid columns={600} rows={400}>
-        <Row>
+    <Grid columns={600} rows={400}>
+      <Row>
+        <Space />
+        <Column>
           <Space />
-          <Column>
-            <Space />
-            <Box>Box</Box>
-            <Space />
-          </Column>
+          <Box>Box</Box>
           <Space />
-        </Row>
-      </Grid>
-    </React.Suspense>
+        </Column>
+        <Space />
+      </Row>
+    </Grid>
   )
 }

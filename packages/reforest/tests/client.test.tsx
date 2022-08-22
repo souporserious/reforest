@@ -11,7 +11,7 @@ test("renders a simple list of items with the correct indexes", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
     const index = useIndex()
 
-    useTreeData(React.useMemo(() => ({ value }), [value]))
+    useTreeData(() => ({ value }), [value])
 
     return <div data-testid={index?.indexPathString}>{children}</div>
   }
