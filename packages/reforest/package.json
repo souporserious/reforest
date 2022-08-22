@@ -44,9 +44,7 @@
   },
   "dependencies": {
     "performant-array-to-tree": "^1.11.0",
-    "proxy-memoize": "^1.2.0",
-    "suspend-react": "^0.0.8",
-    "valtio": "^1.6.3"
+    "zustand": "^4.1.0"
   },
   "devDependencies": {
     "@jsxui/layout": "^0.1.3",

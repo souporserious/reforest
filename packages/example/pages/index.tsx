@@ -1,8 +1,11 @@
 import * as React from "react"
-import { flattenChildren, mapToChildren, useTree, useTreeEffect, useTreeData } from "reforest"
+import { flattenChildren, mapToChildren, useTree, useTreeData, useTreeState } from "reforest"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
+
+const isServer = typeof window === "undefined"
+const useIsomorphicLayoutEffect = isServer ? React.useEffect : React.useLayoutEffect
 
 function Timeline({
   children: childrenProp,
@@ -12,68 +15,70 @@ function Timeline({
   scroll?: boolean
 }) {
   const tree = useTree(childrenProp)
-
-  useTreeEffect(
-    tree.state,
-    (treeMap) => {
-      const ids = new Set()
-      let totalDuration = 0
-
-      const sceneKeyframes = mapToChildren(treeMap)
-        .flatMap((scene) => {
-          const sequences = flattenChildren(scene.children)
-          const keyframes = sequences.map((keyframe) => {
-            const {
-              id,
-              treeId,
-              delay = 0,
-              width,
-              height,
-              scale,
-              backgroundColor,
-              opacity,
-            } = keyframe
-            const styles = {
-              width,
-              height,
-              scale,
-              opacity,
-              backgroundColor,
-              transform: "translate(0px, 0px)",
-            }
-            const options = { duration: scene.duration, at: totalDuration, delay }
-            const hasId = ids.has(id)
-            const parsedId = id || treeId
-
-            if (hasId) {
-              const bounds = document.getElementById(id)?.getBoundingClientRect()
-              const xOffset = window.scrollX + (bounds?.x || 0)
-              const yOffset = window.scrollY + (bounds?.y || 0)
-
-              styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-            } else {
-              ids.add(id)
-            }
-
-            return [`#${parsedId}`, styles, options]
-          })
-
-          totalDuration += scene.duration
-
-          return keyframes
-        })
-        .filter(Boolean)
-
-      if (sceneKeyframes) {
-        const controls = timeline(sceneKeyframes as any)
-
-        if (scrollProp && controls.pause) {
-          return scroll(controls)
-        }
-      }
-    },
-    [scrollProp]
+  const treeMap = tree.useStore((state) => state.treeMap)
+  const childrenToRender = (
+    <TimelineContext.Provider value={{ scroll: scrollProp }}>
+      {tree.children}
+    </TimelineContext.Provider>
   )
+
+  useIsomorphicLayoutEffect(() => {
+    const ids = new Set()
+    let totalDuration = 0
+
+    const sceneKeyframes = mapToChildren(treeMap)
+      .flatMap((scene) => {
+        const sequences = flattenChildren(scene.children)
+        const keyframes = sequences.map((keyframe) => {
+          const {
+            id,
+            generatedId,
+            delay = 0,
+            width,
+            height,
+            scale,
+            backgroundColor,
+            opacity,
+          } = keyframe
+          const styles = {
+            width,
+            height,
+            scale,
+            opacity,
+            backgroundColor,
+            transform: "translate(0px, 0px)",
+          }
+          const options = { duration: scene.duration, at: totalDuration, delay }
+          const hasId = ids.has(id)
+          const parsedId = id || generatedId
+
+          if (hasId) {
+            const bounds = document.getElementById(id)?.getBoundingClientRect()
+            const xOffset = window.scrollX + (bounds?.x || 0)
+            const yOffset = window.scrollY + (bounds?.y || 0)
+
+            styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+          } else {
+            ids.add(id)
+          }
+
+          return [`#${parsedId}`, styles, options]
+        })
+
+        totalDuration += scene.duration
+
+        return keyframes
+      })
+      .filter(Boolean)
+
+    if (sceneKeyframes) {
+      const controls = timeline(sceneKeyframes as any)
+
+      if (scrollProp && controls.pause) {
+        return scroll(controls)
+      }
+    }
+  }, [scrollProp, treeMap])
 
   const styles = {
     display: "grid",
@@ -81,13 +86,7 @@ function Timeline({
     minHeight: "100vh",
   }
 
-  return (
-    <main style={styles}>
-      <TimelineContext.Provider value={{ scroll: scrollProp }}>
-        {tree.children}
-      </TimelineContext.Provider>
-    </main>
-  )
+  return <main style={styles}>{childrenToRender}</main>
 }
 
 function Scene({
@@ -99,9 +98,12 @@ function Scene({
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
   const tree = useTree(childrenProp)
-  const node = React.useMemo(() => ({ type: "scene", duration }), [duration])
 
-  useTreeData(node)
+  useTreeData(() => ({ type: "scene", duration }), [duration])
+
+  if (tree.isPreRender) {
+    return tree.children
+  }
 
   if (timelineContextValue?.scroll) {
     return (
@@ -152,39 +154,39 @@ function Box({
   scale?: [number, number]
   delay?: number
 }) {
-  const node = React.useMemo(
-    () => ({
-      type: "box",
-      id,
-      width,
-      height,
-      backgroundColor,
-      opacity,
-      scale,
-      delay,
-    }),
-    []
-  )
+  const { indexPathString, isPreRender } = useTreeData(() => ({
+    type: "box",
+    id,
+    width,
+    height,
+    backgroundColor,
+    opacity,
+    scale,
+    delay,
+  }))
 
-  const treeData = useTreeData(node, (treeMap, treeId) => {
-    const ids = new Set()
-    let shouldRender = false
+  if (isPreRender) {
+    return null
+  }
 
-    treeMap.forEach(({ id }, treeIdToCompare) => {
-      const isSameId = treeId === treeIdToCompare
-      const hasId = ids.has(id)
-      if (isSameId) {
-        shouldRender = !hasId
-      }
-      if (!hasId) {
-        ids.add(id)
-      }
-    })
+  const treeMap = useTreeState((state) => state.treeMap)
+  const ids = new Set()
+  let shouldRender = false
 
-    return { shouldRender }
+  treeMap.forEach((treeNode, treeNodeIndexPathString) => {
+    const isSameInstance = treeNodeIndexPathString === indexPathString
+    const hasId = ids.has(treeNode.id)
+
+    if (isSameInstance) {
+      shouldRender = !hasId
+    }
+
+    if (!hasId) {
+      ids.add(treeNode.id)
+    }
   })
 
-  if (!treeData.computed.shouldRender) {
+  if (!shouldRender) {
     return null
   }
 

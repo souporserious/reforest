@@ -1,53 +1,86 @@
 import * as React from "react"
-import type { TreeState } from "reforest"
-import { useTree, useTreeData, useTreeSnapshot, useTreeState } from "reforest"
+import type { TreeStateStore } from "reforest"
+import { useTree, useTreeData, useTreeState } from "reforest"
 
-function TotalDuration({ treeState }: { treeState: TreeState }) {
-  const totalDuration = useTreeSnapshot(treeState, (treeMap) => {
-    return Array.from(treeMap.values()).reduce((total, node: any) => total + node.duration, 0)
-  })
+function TotalDuration({ useTreeStore }: { useTreeStore: TreeStateStore }) {
+  const treeMap = useTreeStore((state) => state.treeMap)
+  const totalDuration = Array.from(treeMap.values()).reduce(
+    (total, node: any) => total + node.duration,
+    0
+  )
 
   return <div>Total Duration: {totalDuration}</div>
 }
 
-function Parent({ children, treeState }: { children: React.ReactNode; treeState?: TreeState }) {
-  const tree = useTree(children, treeState)
+function Parent({ children }: { children: React.ReactNode }) {
+  const tree = useTree(children)
 
-  return <div style={{ display: "flex", gap: "1rem" }}>{tree.children}</div>
+  if (tree.isPreRender) {
+    return tree.children
+  }
+
+  return (
+    <div style={{ display: "flex", gap: "1rem" }}>
+      {tree.children}
+      {tree.isRoot ? <TotalDuration useTreeStore={tree.useStore} /> : null}
+    </div>
+  )
 }
 
-function Child({ color, duration }: { color: string; duration: number }) {
-  const value = React.useMemo(() => ({ color, duration }), [color, duration])
-  const { computed } = useTreeData(value, (treeMap) => treeMap.size + duration)
+function Child({
+  children,
+  color,
+  duration,
+}: {
+  children?: React.ReactNode
+  color: string
+  duration: number
+}) {
+  const treeMap = useTreeState((state) => state.treeMap)
+  const { isPreRender } = useTreeData(() => ({ color, duration }), [color, duration])
+
+  if (isPreRender) {
+    return null
+  }
+
+  const computed = treeMap.size + duration
 
   return (
     <div style={{ display: "grid", padding: 16, backgroundColor: color, color: "white" }}>
       <div>Duration: {duration}</div>
       <div>Computed: {computed}</div>
+      {children}
     </div>
+  )
+}
+
+function SubParent() {
+  const [showChild, setShowChild] = React.useState(false)
+
+  return (
+    <Parent>
+      <Child duration={3} color="yellow">
+        <button onClick={() => setShowChild((bool) => !bool)}>Toggle Child</button>
+      </Child>
+      <Child duration={1.5} color="purple" />
+      {showChild ? <Child duration={1} color="teal" /> : null}
+    </Parent>
   )
 }
 
 export default function App() {
   const [showChild, setShowChild] = React.useState(false)
-  const treeState = useTreeState()
 
   return (
     <>
       <button onClick={() => setShowChild((bool) => !bool)}>Toggle Child</button>
-      <TotalDuration treeState={treeState} />
-      <React.Suspense fallback={null}>
-        <Parent treeState={treeState}>
-          <Child duration={3} color="green" />
-          <Child duration={1.5} color="blue" />
-          <Parent>
-            <Child duration={3} color="yellow" />
-            <Child duration={1.5} color="purple" />
-          </Parent>
-          {showChild ? <Child duration={4} color="pink" /> : null}
-          <Child duration={2} color="orange" />
-        </Parent>
-      </React.Suspense>
+      <Parent>
+        <Child duration={3} color="green" />
+        <Child duration={1.5} color="blue" />
+        <SubParent />
+        {showChild ? <Child duration={4} color="pink" /> : null}
+        <Child duration={2} color="orange" />
+      </Parent>
     </>
   )
 }

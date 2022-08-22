@@ -1,61 +1,17 @@
 import * as React from "react"
-import { useSnapshot } from "valtio"
+import create from "zustand"
 
-import { TreeStateContext, TreeMapContext, createInitialTreeState } from "./contexts"
-import { useServerComputedData } from "./server"
+import type { TreeState, TreeStateStore } from "./contexts"
+import { PreRenderContext, TreeStateContext } from "./contexts"
 import { useIndex, useIndexedChildren } from "./use-indexed-children"
-import { isServer, sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
-
-/** Callback when the tree map is. */
-export function useTreeEffect(
-  treeState: TreeState | null,
-  callback: (treeMap: Map<string, any>) => void | (() => void),
-  dependencies: React.DependencyList = []
-) {
-  const contextTreeState = React.useContext(TreeStateContext)
-  const parsedTreeState = treeState || contextTreeState
-
-  if (parsedTreeState === null) {
-    throw new Error("treeState must be defined")
-  }
-
-  const snapshot = useSnapshot(parsedTreeState)
-
-  useIsomorphicLayoutEffect(() => {
-    const treeMap = sortMapByIndexPath(snapshot.treeMap)
-
-    return callback(treeMap)
-  }, dependencies.concat(snapshot))
-}
-
-/** Get the current tree map with optional computed data. */
-export function useTreeSnapshot<ComputedData extends any>(
-  treeState: TreeState | null,
-  computeData?: (treeMap: Map<string, any>) => ComputedData,
-  dependencies: React.DependencyList = []
-) {
-  const contextTreeState = React.useContext(TreeStateContext)
-  const parsedTreeState = treeState || contextTreeState
-
-  if (parsedTreeState === null) {
-    throw new Error("treeState must be defined")
-  }
-
-  const snapshot = useSnapshot(parsedTreeState)
-
-  return React.useMemo(() => {
-    const treeMap = sortMapByIndexPath(snapshot.treeMap)
-
-    return computeData ? computeData(treeMap) : treeMap
-  }, dependencies.concat(snapshot)) as ComputedData
-}
+import { sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
 
 /**
  * Control tree state from outside a component.
  *
  * @example
- * import type { TreeState } from "reforest"
- * import { useTree, useTreeData, useTreeState } from "reforest"
+ * import type { TreeMap } from "reforest"
+ * import { useTree, useTreeData, useTreeMap } from "reforest"
  *
  * function Item({ children, value }) {
  *   useTreeData(value)
@@ -78,13 +34,53 @@ export function useTreeSnapshot<ComputedData extends any>(
  *   )
  * }
  */
-export function useTreeState() {
-  const [treeState] = React.useState(() => createInitialTreeState())
+export function useTreeState(): TreeStateStore
+export function useTreeState<U>(selector: (state: TreeState) => U): U
+export function useTreeState(selector?: (state: TreeState) => unknown) {
+  const treeStateContext = React.useContext(TreeStateContext)
+  const [treeState] = React.useState(
+    () =>
+      treeStateContext ||
+      create<TreeState>((set, get) => ({
+        treeMap: new Map(),
+        preRenderedTreeIds: new Map(),
+        shouldPreRender: true,
+        setTreeData: (id, data) => {
+          const { treeMap } = get()
 
-  return treeState
+          treeMap.set(id, data)
+
+          set({ treeMap: sortMapByIndexPath(treeMap) })
+        },
+        deleteTreeData: (id) => {
+          const { treeMap } = get()
+
+          treeMap.delete(id)
+
+          set({ treeMap: sortMapByIndexPath(treeMap) })
+        },
+      }))
+  )
+
+  return selector ? treeState(selector) : treeState
 }
 
-export type TreeState = ReturnType<typeof useTreeState>
+/** Pre-renders children to capture data in useTreeData hooks for initial component renders. */
+function PreRenderTree({ children }: { children: React.ReactNode }) {
+  const treeState = useTreeState()
+  const shouldPreRender = treeState((state) => state.shouldPreRender)
+
+  useIsomorphicLayoutEffect(() => {
+    treeState.setState({
+      preRenderedTreeIds: new Map(),
+      shouldPreRender: false,
+    })
+  }, [])
+
+  return shouldPreRender ? (
+    <PreRenderContext.Provider value={true}>{children}</PreRenderContext.Provider>
+  ) : null
+}
 
 /**
  * Manage ordered data subscriptions for components.
@@ -102,76 +98,68 @@ export type TreeState = ReturnType<typeof useTreeState>
  *   return <ul>{tree.children}</ul>
  * }
  */
-export function useTree(children: React.ReactNode, parentTreeState?: TreeState) {
-  const defaultTreeState = useTreeState()
-  const [treeMap] = React.useState(() => new Map<string, Record<string, any>>())
-  const treeStateContextValue = React.useContext(TreeStateContext)
-  const parsedContextValue = treeStateContextValue || parentTreeState || defaultTreeState
-  const isRoot = treeStateContextValue === null
+export function useTree(children: React.ReactNode, treeState?: TreeStateStore) {
+  const treeStateContext = React.useContext(TreeStateContext)
+  const treeStateLocal = useTreeState()
+  const parsedTreeState = treeStateContext || treeState || treeStateLocal
+  const isPreRender = React.useContext(PreRenderContext)
+  const isRoot = treeStateContext === null
   const indexedChildren = useIndexedChildren(children)
   const childrenToRender = isRoot ? (
-    <TreeMapContext.Provider value={treeMap}>
-      <TreeStateContext.Provider value={parsedContextValue}>
-        {indexedChildren}
-      </TreeStateContext.Provider>
-    </TreeMapContext.Provider>
+    <TreeStateContext.Provider value={parsedTreeState}>
+      <PreRenderTree>{indexedChildren}</PreRenderTree>
+      {indexedChildren}
+    </TreeStateContext.Provider>
   ) : (
     indexedChildren
   )
 
   return {
     children: childrenToRender,
-    state: parsedContextValue,
+    useStore: parsedTreeState,
+    isPreRender,
     isRoot,
   }
 }
 
 /** Subscribe data to the root useTree hook. */
-export function useTreeData<TreeValue extends any, ComputedTreeValue extends any>(
-  data: TreeValue,
-  computeData?: (treeMap: Map<string, TreeValue>, treeId: string) => ComputedTreeValue,
-  dependencies: React.DependencyList = []
-) {
-  const treeState = React.useContext(TreeStateContext)
-  const treeMapContext = React.useContext(TreeMapContext)
-  const treeId = React.useId().slice(1, -1)
+export function useTreeData(getData: () => any, dependencies: React.DependencyList = []) {
+  const isPreRender = React.useContext(PreRenderContext)
+  const treeStateContext = React.useContext(TreeStateContext)
 
-  if (treeState === null) {
+  if (treeStateContext === null) {
     throw new Error("useTreeData must be used in a descendant component of useTree.")
   }
 
-  const index = useIndex()!
-  const indexPathString = index.indexPathString
+  const { deleteTreeData, preRenderedTreeIds, setTreeData, treeMap } = treeStateContext.getState()
+  const { indexPathString } = useIndex()!
+  const generatedId = React.useId().slice(1, -1)
+  const treeId = preRenderedTreeIds.get(indexPathString) || generatedId
+  const treeData = React.useMemo(
+    () => Object.assign({ treeId }, getData()),
+    dependencies.concat(treeId)
+  )
 
-  /**
-   * Subscribe tree data to root map on the server and client.
-   * Note, treeMapContext is for the server and treeMapAtom is for the client.
-   */
-  if (isServer) {
-    treeMapContext.set(treeId, Object.assign({ indexPathString, treeId }, data))
+  if (isPreRender) {
+    /** Mutate tree data when pre-rendering so it's available when doing the subsequent render of root children. */
+    treeMap.set(indexPathString, treeData)
+
+    /** Store the treeId so there's a stable id between pre-render and actual render. */
+    preRenderedTreeIds.set(indexPathString, treeId)
+  } else {
+    /** After the initial pre-render we switch to a simple effect for coordinating data updates. */
+    React.useEffect(() => {
+      setTreeData(indexPathString, treeData)
+
+      return () => {
+        deleteTreeData(indexPathString)
+      }
+    }, [indexPathString, treeData])
   }
 
-  useIsomorphicLayoutEffect(() => {
-    return treeState.subscribeTreeData(treeId, Object.assign({ indexPathString, treeId }, data))
-  }, [treeState, treeId, data])
-
-  /** Compute data from all collected tree data in parent map. */
-  const serverComputedData = useServerComputedData(treeId, computeData)
-  const clientComputedData = useTreeSnapshot(
-    null,
-    (treeMap) => {
-      /** If tree map size is 0 wait to render client data until the initial server render hyrdates to avoid mismatches. */
-      const initialHydration = treeMap.size === 0
-
-      return computeData && !initialHydration ? computeData(treeMap, treeId) : null
-    },
-    dependencies
-  )
-  const computedData = (clientComputedData || serverComputedData) as ComputedTreeValue
-
   return {
-    computed: computedData,
-    index,
+    indexPathString,
+    isPreRender,
     treeId,
   }
 }

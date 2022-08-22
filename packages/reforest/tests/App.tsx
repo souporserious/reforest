@@ -10,7 +10,7 @@ import {
   flattenLayout,
 } from "@jsxui/layout"
 
-import { mapToChildren, useTree, useTreeData } from "../src"
+import { mapToChildren, useTree, useTreeData, useTreeState } from "../src"
 
 const RootNodeContext = React.createContext<LayoutNode | null>(null)
 
@@ -36,12 +36,7 @@ function RootGrid({ children, columns, rows, width, height }: GridProps) {
 }
 
 function SubGrid({ children, columns, rows, width, height }: GridProps) {
-  const node = React.useMemo(
-    () => createGrid({ columns, rows, width, height }),
-    [columns, rows, width, height]
-  )
-
-  useTreeData(node)
+  useTreeData(() => createGrid({ columns, rows, width, height }))
 
   return <div style={{ width, height }}>{children}</div>
 }
@@ -69,13 +64,9 @@ function Column({
   width?: number
   height?: number
 }) {
-  const node = React.useMemo(
-    () => createColumn({ columns, rows, width, height }),
-    [columns, rows, width, height]
-  )
   const tree = useTree(children)
 
-  useTreeData(node)
+  useTreeData(() => createColumn({ columns, rows, width, height }))
 
   return tree.children
 }
@@ -93,21 +84,15 @@ function Row({
   width?: number
   height?: number
 }) {
-  const node = React.useMemo(
-    () => createRow({ columns, rows, width, height }),
-    [columns, rows, width, height]
-  )
   const tree = useTree(children)
 
-  useTreeData(node)
+  useTreeData(() => createRow({ columns, rows, width, height }))
 
   return tree.children
 }
 
 function Space({ size }: { size?: number }) {
-  const node = React.useMemo(() => createSpace({ size }), [size])
-
-  useTreeData(node)
+  useTreeData(() => createSpace({ size }))
 
   return null
 }
@@ -127,38 +112,40 @@ function Box({
     throw new Error("Box must be used in Grid.")
   }
 
-  const node = React.useMemo(() => createNode({ width, height }), [width, height])
-  const treeData = useTreeData(node, (treeMap, treeId) => {
-    const treeChildren = mapToChildren(treeMap)
-    const computedLayout = computeLayout({ ...rootNode, children: treeChildren })
-    const flattenedLayout = flattenLayout(computedLayout.layout)
-    const nodeLayout = flattenedLayout?.children.find((node: any) => node.treeId === treeId)
+  const { isPreRender, treeId } = useTreeData(() => createNode({ width, height }), [width, height])
 
-    return {
-      width: nodeLayout?.width,
-      height: nodeLayout?.height,
-      top: nodeLayout?.column,
-      left: nodeLayout?.row,
-    }
-  })
+  if (isPreRender) {
+    return null
+  }
 
-  return <div style={treeData.computed}>{children}</div>
+  const treeState = useTreeState()
+  const treeMap = treeState((state) => state.treeMap)
+  const treeChildren = mapToChildren(treeMap)
+  const computedLayout = computeLayout({ ...rootNode, children: treeChildren })
+  const flattenedLayout = flattenLayout(computedLayout.layout)
+  const nodeLayout = flattenedLayout?.children.find((node: any) => node.treeId === treeId)
+  const computedStyles = {
+    width: nodeLayout?.width,
+    height: nodeLayout?.height,
+    top: nodeLayout?.column,
+    left: nodeLayout?.row,
+  }
+
+  return <div style={computedStyles}>{children}</div>
 }
 
 export function App() {
   return (
-    <React.Suspense fallback={null}>
-      <Grid columns={600} rows={400}>
-        <Row>
+    <Grid columns={600} rows={400}>
+      <Row>
+        <Space />
+        <Column>
           <Space />
-          <Column>
-            <Space />
-            <Box>Box</Box>
-            <Space />
-          </Column>
+          <Box>Box</Box>
           <Space />
-        </Row>
-      </Grid>
-    </React.Suspense>
+        </Column>
+        <Space />
+      </Row>
+    </Grid>
   )
 }
