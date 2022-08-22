@@ -36,15 +36,14 @@ function Child({
   color: string
   duration: number
 }) {
-  const useTreeStore = useTreeState()
-  const treeMap = useTreeStore((state) => state.treeMap)
-  const computed = treeMap.size + duration
-
-  const { isPreRender } = useTreeData(React.useMemo(() => ({ color, duration }), [color, duration]))
+  const treeMap = useTreeState((state) => state.treeMap)
+  const { isPreRender } = useTreeData(() => ({ color, duration }), [color, duration])
 
   if (isPreRender) {
     return null
   }
+
+  const computed = treeMap.size + duration
 
   return (
     <div style={{ display: "grid", padding: 16, backgroundColor: color, color: "white" }}>

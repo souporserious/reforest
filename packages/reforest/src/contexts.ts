@@ -15,8 +15,8 @@ IndexContext.displayName = "IndexContext"
 
 export type TreeState = {
   treeMap: Map<string, any>
+  preRenderedTreeIds: Map<string, string>
   shouldPreRender: boolean
-  clearTreeData: () => void
   setTreeData: (key: string, value: any, shouldUpdate?: boolean) => void
   deleteTreeData: (key: string, shouldUpdate?: boolean) => void
 }

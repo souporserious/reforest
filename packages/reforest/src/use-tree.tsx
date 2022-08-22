@@ -34,22 +34,23 @@ import { sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
  *   )
  * }
  */
-export function useTreeState() {
+export function useTreeState(): TreeStateStore
+export function useTreeState<U>(selector: (state: TreeState) => U): U
+export function useTreeState(selector?: (state: TreeState) => unknown) {
   const treeStateContext = React.useContext(TreeStateContext)
   const [treeState] = React.useState(
     () =>
       treeStateContext ||
       create<TreeState>((set, get) => ({
         treeMap: new Map(),
+        preRenderedTreeIds: new Map(),
         shouldPreRender: true,
-        setTreeData: (id, data, shouldUpdate = true) => {
+        setTreeData: (id, data) => {
           const { treeMap } = get()
 
           treeMap.set(id, data)
 
-          if (shouldUpdate) {
-            set({ treeMap: sortMapByIndexPath(treeMap) })
-          }
+          set({ treeMap: sortMapByIndexPath(treeMap) })
         },
         deleteTreeData: (id) => {
           const { treeMap } = get()
@@ -58,13 +59,10 @@ export function useTreeState() {
 
           set({ treeMap: sortMapByIndexPath(treeMap) })
         },
-        clearTreeData: () => {
-          set({ treeMap: new Map() })
-        },
       }))
   )
 
-  return treeState
+  return selector ? treeState(selector) : treeState
 }
 
 /** Pre-renders children to capture data in useTreeData hooks for initial component renders. */
@@ -73,7 +71,10 @@ function PreRenderTree({ children }: { children: React.ReactNode }) {
   const shouldPreRender = treeState((state) => state.shouldPreRender)
 
   useIsomorphicLayoutEffect(() => {
-    treeState.setState({ shouldPreRender: false })
+    treeState.setState({
+      preRenderedTreeIds: new Map(),
+      shouldPreRender: false,
+    })
   }, [])
 
   return shouldPreRender ? (
@@ -122,7 +123,7 @@ export function useTree(children: React.ReactNode, treeState?: TreeStateStore) {
 }
 
 /** Subscribe data to the root useTree hook. */
-export function useTreeData(data: any) {
+export function useTreeData(getData: () => any, dependencies: React.DependencyList = []) {
   const isPreRender = React.useContext(PreRenderContext)
   const treeStateContext = React.useContext(TreeStateContext)
 
@@ -130,22 +131,35 @@ export function useTreeData(data: any) {
     throw new Error("useTreeData must be used in a descendant component of useTree.")
   }
 
-  const index = useIndex()!
-  const indexPathString = index.indexPathString
+  const { deleteTreeData, preRenderedTreeIds, setTreeData, treeMap } = treeStateContext.getState()
+  const { indexPathString } = useIndex()!
+  const generatedId = React.useId().slice(1, -1)
+  const treeId = preRenderedTreeIds.get(indexPathString) || generatedId
+  const treeData = React.useMemo(
+    () => Object.assign({ treeId }, getData()),
+    dependencies.concat(treeId)
+  )
 
   if (isPreRender) {
     /** Mutate tree data when pre-rendering so it's available when doing the subsequent render of root children. */
-    treeStateContext.getState().setTreeData(indexPathString, data, false)
+    treeMap.set(indexPathString, treeData)
+
+    /** Store the treeId so there's a stable id between pre-render and actual render. */
+    preRenderedTreeIds.set(indexPathString, treeId)
   } else {
     /** After the initial pre-render we switch to a simple effect for coordinating data updates. */
     React.useEffect(() => {
-      treeStateContext.getState().setTreeData(indexPathString, data)
+      setTreeData(indexPathString, treeData)
 
       return () => {
-        treeStateContext.getState().deleteTreeData(indexPathString)
+        deleteTreeData(indexPathString)
       }
-    }, [indexPathString, data])
+    }, [indexPathString, treeData])
   }
 
-  return { indexPathString, isPreRender }
+  return {
+    indexPathString,
+    isPreRender,
+    treeId,
+  }
 }

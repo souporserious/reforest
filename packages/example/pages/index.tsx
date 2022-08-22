@@ -98,9 +98,8 @@ function Scene({
 }) {
   const timelineContextValue = React.useContext(TimelineContext)
   const tree = useTree(childrenProp)
-  const node = React.useMemo(() => ({ type: "scene", duration }), [duration])
 
-  useTreeData(node)
+  useTreeData(() => ({ type: "scene", duration }), [duration])
 
   if (tree.isPreRender) {
     return tree.children
@@ -155,35 +154,26 @@ function Box({
   scale?: [number, number]
   delay?: number
 }) {
-  const node = React.useMemo(
-    () => ({
-      type: "box",
-      id,
-      width,
-      height,
-      backgroundColor,
-      opacity,
-      scale,
-      delay,
-    }),
-    []
-  )
-  const { indexPathString, isPreRender } = useTreeData(node)
+  const { indexPathString, isPreRender } = useTreeData(() => ({
+    type: "box",
+    id,
+    width,
+    height,
+    backgroundColor,
+    opacity,
+    scale,
+    delay,
+  }))
 
   if (isPreRender) {
     return null
   }
 
-  const useTreeStore = useTreeState()
-  const treeMap = useTreeStore((state) => state.treeMap)
+  const treeMap = useTreeState((state) => state.treeMap)
   const ids = new Set()
   let shouldRender = false
 
   treeMap.forEach((treeNode, treeNodeIndexPathString) => {
-    if (treeNode.type !== "box") {
-      return
-    }
-
     const isSameInstance = treeNodeIndexPathString === indexPathString
     const hasId = ids.has(treeNode.id)
 
