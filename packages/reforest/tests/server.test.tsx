@@ -2,21 +2,21 @@
 import * as React from "react"
 import { renderToString } from "react-dom/server"
 
-import { useTree, useTreeData, useTreeState } from "../src"
+import { useTree, useTreeNode, useTreeState } from "../src"
 
 test("computed data renders on server", () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
     const tree = useTree(children)
-    const treeData = useTreeData(() => ({ value }), [value])
+    const node = useTreeNode(() => ({ value }), [value])
 
-    if (treeData.isPreRender) {
+    if (node.isPreRender) {
       return null
     }
 
     const treeMap = useTreeState((state) => state.treeMap)
 
     return (
-      <div data-testid={treeData.treeId}>
+      <div data-testid={node.id}>
         {treeMap.size} {tree.children}
       </div>
     )
@@ -41,9 +41,9 @@ test("computed data renders on server", () => {
 
 test("changing rendered elements based on computed data", () => {
   function Box({ id }: { id: string }) {
-    const { indexPathString, isPreRender } = useTreeData(() => ({ id }), [id])
+    const node = useTreeNode(() => ({ id }), [id])
 
-    if (isPreRender) {
+    if (node.isPreRender) {
       return null
     }
 
@@ -51,8 +51,8 @@ test("changing rendered elements based on computed data", () => {
     const ids = new Set()
     let shouldRender = false
 
-    treeMap.forEach((treeNode, treeNodeIndexPathString) => {
-      const isSameInstance = treeNodeIndexPathString === indexPathString
+    treeMap.forEach((treeNode) => {
+      const isSameInstance = treeNode.treeId === node.id
       const hasId = ids.has(treeNode.id)
 
       if (isSameInstance) {

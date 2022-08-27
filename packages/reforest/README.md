@@ -40,7 +40,7 @@ Please note the following example is for demo purposes only and you should use a
 
 ```tsx
 import * as React from "react"
-import { useTree, useTreeData } from "reforest"
+import { useTree, useTreeNode } from "reforest"
 
 const SelectContext = React.createContext<any>(null)
 
@@ -87,7 +87,7 @@ function Select({ children }: { children: React.ReactNode }) {
 }
 
 function Option({ children, value }: { children: React.ReactNode; value: any }) {
-  const { indexPath, index } = useTreeData()
+  const { indexPath, index } = useTreeNode()
   const selectContext = React.useContext(SelectContext)
   const [highlightedIndex, setHighlightedIndex] = selectContext.highlightedIndexState
   const isHighlighted = index === highlightedIndex

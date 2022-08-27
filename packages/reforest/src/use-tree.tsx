@@ -11,10 +11,10 @@ import { sortMapByIndexPath, useIsomorphicLayoutEffect } from "./utils"
  *
  * @example
  * import type { TreeMap } from "reforest"
- * import { useTree, useTreeData, useTreeMap } from "reforest"
+ * import { useTree, useTreeNode, useTreeMap } from "reforest"
  *
  * function Item({ children, value }) {
- *   useTreeData(value)
+ *   useTreeNode(value)
  *   return <li>{children}</li>
  * }
  *
@@ -65,7 +65,7 @@ export function useTreeState(selector?: (state: TreeState) => unknown) {
   return selector ? treeState(selector) : treeState
 }
 
-/** Pre-renders children to capture data in useTreeData hooks for initial component renders. */
+/** Pre-renders children to capture data in useTreeNode hooks for initial component renders. */
 function PreRenderTree({ children }: { children: React.ReactNode }) {
   const treeState = useTreeState()
   const shouldPreRender = treeState((state) => state.shouldPreRender)
@@ -86,10 +86,10 @@ function PreRenderTree({ children }: { children: React.ReactNode }) {
  * Manage ordered data subscriptions for components.
  *
  * @example create a tree of data subscriptions
- * import { useTree, useTreeData } from "reforest"
+ * import { useTree, useTreeNode } from "reforest"
  *
  * function Item({ children, value }) {
- *   useTreeData(value)
+ *   useTreeNode(value)
  *   return <li>{children}</li>
  * }
  *
@@ -123,12 +123,12 @@ export function useTree(children: React.ReactNode, treeState?: TreeStateStore) {
 }
 
 /** Subscribe data to the root useTree hook. */
-export function useTreeData(getData: () => any, dependencies: React.DependencyList = []) {
+export function useTreeNode(getData: () => any, dependencies: React.DependencyList = []) {
   const isPreRender = React.useContext(PreRenderContext)
   const treeStateContext = React.useContext(TreeStateContext)
 
   if (treeStateContext === null) {
-    throw new Error("useTreeData must be used in a descendant component of useTree.")
+    throw new Error("useTreeNode must be used in a descendant component of useTree.")
   }
 
   const { deleteTreeData, preRenderedTreeIds, setTreeData, treeMap } = treeStateContext.getState()
@@ -158,8 +158,9 @@ export function useTreeData(getData: () => any, dependencies: React.DependencyLi
   }
 
   return {
+    id: treeId,
+    data: treeData,
     indexPathString,
     isPreRender,
-    treeId,
   }
 }

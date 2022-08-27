@@ -1,5 +1,5 @@
 import * as React from "react"
-import { flattenChildren, mapToChildren, useTree, useTreeData, useTreeState } from "reforest"
+import { flattenChildren, mapToChildren, useTree, useTreeNode, useTreeState } from "reforest"
 import { scroll, timeline } from "motion"
 
 const TimelineContext = React.createContext<{ scroll?: boolean } | null>(null)
@@ -99,7 +99,7 @@ function Scene({
   const timelineContextValue = React.useContext(TimelineContext)
   const tree = useTree(childrenProp)
 
-  useTreeData(() => ({ type: "scene", duration }), [duration])
+  useTreeNode(() => ({ type: "scene", duration }), [duration])
 
   if (tree.isPreRender) {
     return tree.children
@@ -154,7 +154,7 @@ function Box({
   scale?: [number, number]
   delay?: number
 }) {
-  const { indexPathString, isPreRender } = useTreeData(() => ({
+  const node = useTreeNode(() => ({
     type: "box",
     id,
     width,
@@ -165,7 +165,7 @@ function Box({
     delay,
   }))
 
-  if (isPreRender) {
+  if (node.isPreRender) {
     return null
   }
 
@@ -173,8 +173,8 @@ function Box({
   const ids = new Set()
   let shouldRender = false
 
-  treeMap.forEach((treeNode, treeNodeIndexPathString) => {
-    const isSameInstance = treeNodeIndexPathString === indexPathString
+  treeMap.forEach((treeNode) => {
+    const isSameInstance = treeNode.treeId === node.id
     const hasId = ids.has(treeNode.id)
 
     if (isSameInstance) {
