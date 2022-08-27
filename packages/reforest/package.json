@@ -1,6 +1,6 @@
 {
   "name": "reforest",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Collect ordered React render data seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -39,8 +39,7 @@
   },
   "homepage": "https://github.com/souporserious/reforest",
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react": ">=16.8"
   },
   "dependencies": {
     "performant-array-to-tree": "^1.11.0",
