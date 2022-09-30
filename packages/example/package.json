@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "motion": "^10.14.2",
-    "next": "^12.3.1",
+    "next": "*",
     "next-transpile-modules": "^9.0.0",
     "react": "*",
     "react-dom": "*",
