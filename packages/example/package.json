@@ -8,15 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
-    "@types/node": "^18.7.6",
-    "@types/react": "^18.0.17",
-    "motion": "^10.14.0",
-    "next": "^12.2.5",
+    "motion": "^10.14.2",
+    "next": "^12.3.1",
     "next-transpile-modules": "^9.0.0",
     "react": "*",
     "react-dom": "*",
     "reforest": "workspace:*",
-    "typescript": "^4.7.4",
-    "valtio": "^1.6.3"
+    "typescript": "*"
   }
 }

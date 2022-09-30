@@ -43,13 +43,13 @@
   },
   "dependencies": {
     "performant-array-to-tree": "^1.11.0",
-    "zustand": "^4.1.0"
+    "zustand": "^4.1.1"
   },
   "devDependencies": {
-    "@jsxui/layout": "^0.1.3",
+    "@jsxui/layout": "^0.1.9",
     "react": "*",
     "react-dom": "*",
-    "tsup": "^6.2.2",
+    "tsup": "^6.2.3",
     "typescript": "*"
   }
 }
