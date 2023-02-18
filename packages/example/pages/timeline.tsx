@@ -29,41 +29,52 @@ function Timeline({
     const sceneKeyframes = mapToChildren(treeMap)
       .flatMap((scene) => {
         const sequences = flattenChildren(scene.children)
-        const keyframes = sequences.map((keyframe) => {
-          const {
-            id,
-            generatedId,
-            delay = 0,
-            width,
-            height,
-            scale,
-            backgroundColor,
-            opacity,
-          } = keyframe
-          const styles = {
-            width,
-            height,
-            scale,
-            opacity,
-            backgroundColor,
-            transform: "translate(0px, 0px)",
+        const keyframes = sequences.map(
+          (keyframe: {
+            id: string
+            generatedId: string
+            delay: number
+            width: number
+            height: number
+            scale: number
+            backgroundColor: string
+            opacity: number
+          }) => {
+            const {
+              id,
+              generatedId,
+              delay = 0,
+              width,
+              height,
+              scale,
+              backgroundColor,
+              opacity,
+            } = keyframe
+            const styles = {
+              width,
+              height,
+              scale,
+              opacity,
+              backgroundColor,
+              transform: "translate(0px, 0px)",
+            }
+            const options = { duration: scene.duration, at: totalDuration, delay }
+            const hasId = ids.has(id)
+            const parsedId = id || generatedId
+
+            if (hasId) {
+              const bounds = document.getElementById(id)?.getBoundingClientRect()
+              const xOffset = window.scrollX + (bounds?.x || 0)
+              const yOffset = window.scrollY + (bounds?.y || 0)
+
+              styles.transform = `translate(${xOffset}px, ${yOffset}px)`
+            } else {
+              ids.add(id)
+            }
+
+            return [`#${parsedId}`, styles, options]
           }
-          const options = { duration: scene.duration, at: totalDuration, delay }
-          const hasId = ids.has(id)
-          const parsedId = id || generatedId
-
-          if (hasId) {
-            const bounds = document.getElementById(id)?.getBoundingClientRect()
-            const xOffset = window.scrollX + (bounds?.x || 0)
-            const yOffset = window.scrollY + (bounds?.y || 0)
-
-            styles.transform = `translate(${xOffset}px, ${yOffset}px)`
-          } else {
-            ids.add(id)
-          }
-
-          return [`#${parsedId}`, styles, options]
-        })
+        )
 
         totalDuration += scene.duration
 
@@ -74,6 +85,7 @@ function Timeline({
     if (sceneKeyframes) {
       const controls = timeline(sceneKeyframes as any)
 
+      // @ts-expect-error
       if (scrollProp && controls.pause) {
         return scroll(controls)
       }
