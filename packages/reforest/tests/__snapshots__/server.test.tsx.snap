@@ -1,5 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`changing rendered elements based on computed data 1`] = `"<div id=\\"a\\"></div><div id=\\"b\\"></div><div id=\\"c\\"></div>"`;
+exports[`changing rendered elements based on computed data 1`] = `"<div id="a"></div><div id="b"></div><div id="c"></div>"`;
 
-exports[`computed data renders on server 1`] = `"<div data-testid=\\"R5\\">3<!-- --> <!-- -->Apple</div><div data-testid=\\"R9\\">3<!-- --> <!-- -->Orange</div><div data-testid=\\"Rd\\">3<!-- --> <!-- -->Banana</div>"`;
+exports[`computed data renders on server 1`] = `"<div data-testid="R5">3<!-- --> <!-- -->Apple</div><div data-testid="R9">3<!-- --> <!-- -->Orange</div><div data-testid="Rd">3<!-- --> <!-- -->Banana</div>"`;

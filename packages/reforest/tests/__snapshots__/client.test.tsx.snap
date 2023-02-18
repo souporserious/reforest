@@ -3,7 +3,7 @@
 exports[`renders and computes layout 1`] = `
 <div>
   <div
-    style="width: 200px; height: 133.33333333333334px; top: 201px; left: 134.33333333333334px;"
+    style="width: 200px; height: 133.3333px; top: 201px; left: 134.3333px;"
   >
     Box
   </div>
