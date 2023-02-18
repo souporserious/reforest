@@ -1,19 +1,22 @@
 {
-  "name": "example",
-  "version": "0.0.0",
+  "name": "site",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "motion": "^10.14.2",
-    "next": "*",
-    "next-transpile-modules": "^9.0.0",
+    "@jsxui/layout": "^0.1.9",
+    "@next/font": "^13.1.6",
+    "case-anything": "^2.1.10",
+    "motion": "^10.15.5",
+    "next": "^13.1.6",
     "react": "*",
     "react-dom": "*",
-    "reforest": "workspace:*",
-    "typescript": "*"
+    "react-keyed-flatten-children": "^1.3.0",
+    "reforest": "workspace:*"
   }
 }

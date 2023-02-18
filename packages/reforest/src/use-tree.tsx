@@ -1,5 +1,5 @@
 import * as React from "react"
-import create from "zustand"
+import { create } from "zustand"
 
 import type { TreeState, TreeStateStore } from "./contexts"
 import { PreRenderContext, TreeStateContext } from "./contexts"

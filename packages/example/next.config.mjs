@@ -1,5 +1,8 @@
-import withTM from "next-transpile-modules"
-
-export default withTM(["reforest"])({
+/** @type {import('next').NextConfig} */
+export default {
+  experimental: {
+    appDir: true,
+  },
   reactStrictMode: true,
-})
+  transpilePackages: ["reforest"],
+}
