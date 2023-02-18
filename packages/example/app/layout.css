@@ -1,0 +1,89 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  color: white;
+  background: linear-gradient(
+    to bottom right,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+.Grid,
+.Column,
+.Row,
+.Space,
+.Text,
+.Image,
+.Circle,
+.Rectangle,
+.Polygon {
+  --width: 1;
+  --height: 1;
+  --x: 0;
+  --y: 0;
+
+  transform-origin: top left;
+  position: absolute;
+  left: calc(var(--base-unit) * var(--x) + var(--space-unit) * var(--x));
+  top: calc(var(--base-unit) * var(--y) + var(--space-unit) * var(--y));
+  width: calc(var(--base-unit) * var(--width) + var(--space-unit) * calc(var(--width) - 1));
+  height: calc(var(--base-unit) * var(--height) + var(--space-unit) * calc(var(--height) - 1));
+}
+
+.Grid,
+.Column,
+.Row {
+  contain: layout paint size;
+  position: relative;
+}
+
+.Space {
+  z-index: 1000;
+}
+
+.Text {
+  font-family: var(--font-family);
+  font-size: var(--base-unit);
+}
+
+.Text:before,
+.Text:after {
+  content: "";
+  display: block;
+}
+
+.Text:before {
+  margin-top: calc(var(--base-unit) * var(--start-trim));
+}
+
+.Text:after {
+  margin-bottom: calc(var(--base-unit) * var(--end-trim));
+}
+
+.Image {
+  object-fit: cover;
+}
