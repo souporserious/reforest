@@ -15,7 +15,7 @@ function TotalDuration({ useTreeStore }: { useTreeStore: TreeStateStore }) {
 function Parent({ children }: { children: React.ReactNode }) {
   const tree = useTree(children)
 
-  if (tree.isPreRender) {
+  if (tree.isPrerender) {
     return tree.children
   }
 
@@ -37,9 +37,9 @@ function Child({
   duration: number
 }) {
   const treeMap = useTreeState((state) => state.treeMap)
-  const { isPreRender } = useTreeNode(() => ({ color, duration }), [color, duration])
+  const { isPrerender } = useTreeNode(() => ({ color, duration }), [color, duration])
 
-  if (isPreRender) {
+  if (isPrerender) {
     return null
   }
 

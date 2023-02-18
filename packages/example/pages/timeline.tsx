@@ -113,7 +113,7 @@ function Scene({
 
   useTreeNode(() => ({ type: "scene", duration }), [duration])
 
-  if (tree.isPreRender) {
+  if (tree.isPrerender) {
     return tree.children
   }
 
@@ -177,7 +177,7 @@ function Box({
     delay,
   }))
 
-  if (node.isPreRender) {
+  if (node.isPrerender) {
     return null
   }
 

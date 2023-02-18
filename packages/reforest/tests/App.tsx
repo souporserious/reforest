@@ -114,7 +114,7 @@ function Box({
 
   const node = useTreeNode(() => createNode({ width, height }), [width, height])
 
-  if (node.isPreRender) {
+  if (node.isPrerender) {
     return null
   }
 

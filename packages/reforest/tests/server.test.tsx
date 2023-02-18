@@ -9,7 +9,7 @@ test("computed data renders on server", () => {
     const tree = useTree(children)
     const node = useTreeNode(() => ({ value }), [value])
 
-    if (node.isPreRender) {
+    if (node.isPrerender) {
       return null
     }
 
@@ -43,7 +43,7 @@ test("changing rendered elements based on computed data", () => {
   function Box({ id }: { id: string }) {
     const node = useTreeNode(() => ({ id }), [id])
 
-    if (node.isPreRender) {
+    if (node.isPrerender) {
       return null
     }
 

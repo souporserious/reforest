@@ -260,7 +260,7 @@ export function useNode(
   const rootNode = React.useContext(RootNodeContext)
   const treeNode = useTreeNode(getData, dependencies)
 
-  if (treeNode.isPreRender) {
+  if (treeNode.isPrerender) {
     return {
       layoutStyles: null,
       nodeLayout: null,
