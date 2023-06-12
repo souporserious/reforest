@@ -9,7 +9,14 @@ import {
   layoutTypeFactories,
 } from "@jsxui/layout"
 import type { TreeStateStore } from "reforest"
-import { mapToChildren, useTree, useTreeNode, useTreeState } from "reforest"
+import {
+  mapToChildren,
+  useTree,
+  useTreeNode,
+  useTreeId,
+  useTreeState,
+  usePrerender,
+} from "reforest"
 import { capitalCase } from "case-anything"
 import flattenChildren from "react-keyed-flatten-children"
 
@@ -139,7 +146,9 @@ function RootGrid({
 }
 
 function SubGrid({ children, node }: { children: React.ReactNode; node: Partial<LayoutNode> }) {
-  useTreeNode(() => layoutTypeFactories[node.type!](node), Object.values(node))
+  const treeId = useTreeId()
+
+  useTreeNode(treeId, () => layoutTypeFactories[node.type!](node), Object.values(node))
 
   return <>{children}</>
 }
@@ -254,13 +263,15 @@ export function Row({
 }
 
 export function useNode(
-  getData: Parameters<typeof useTreeNode>[0],
+  getData: Parameters<typeof useTreeNode>[1],
   dependencies: React.DependencyList = []
 ) {
   const rootNode = React.useContext(RootNodeContext)
-  const treeNode = useTreeNode(getData, dependencies)
+  const treeId = useTreeId()
+  const treeNode = useTreeNode(treeId, getData, dependencies)
+  const isPrerender = usePrerender()
 
-  if (treeNode.isPrerender) {
+  if (isPrerender) {
     return {
       layoutStyles: null,
       nodeLayout: null,
@@ -278,7 +289,7 @@ export function useNode(
   } as LayoutNode
   const computedLayout = computeLayout(rootTree)
   const flattenedLayout = flattenLayout(computedLayout.layout, grid.debug)
-  const nodeLayout = flattenedLayout.children.find((node) => (node as any).treeId === treeNode.id)
+  const nodeLayout = flattenedLayout.children.find((node) => (node as any).treeId === treeId)
   const ids = new Set()
   let shouldRender = true
 
@@ -287,7 +298,7 @@ export function useNode(
       return
     }
 
-    const isSameInstance = node.treeId === treeNode.id
+    const isSameInstance = node.treeId === treeId
     const hasId = ids.has(node.id)
 
     if (isSameInstance) {
@@ -319,7 +330,7 @@ export function useNode(
     }
   }
 
-  let parsedId = treeNode.data.id || treeNode.id
+  const parsedId = treeNode.id || treeId
 
   return {
     layoutStyles,

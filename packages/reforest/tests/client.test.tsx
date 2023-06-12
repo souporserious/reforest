@@ -3,15 +3,23 @@ import { act, waitFor, render, renderHook } from "@testing-library/react"
 
 import "@testing-library/jest-dom"
 
-import { useIndexedChildren, useIndex, useRovingIndex, useTree, useTreeNode } from "../src"
+import {
+  useIndexedChildren,
+  useIndex,
+  useRovingIndex,
+  useTree,
+  useTreeId,
+  useTreeNode,
+} from "../src"
 
 import { App } from "./App"
 
 test("renders a simple list of items with the correct indexes", async () => {
   function Item({ children, value }: { children: React.ReactNode; value: string }) {
     const index = useIndex()
+    const treeId = useTreeId()
 
-    useTreeNode(() => ({ value }), [value])
+    useTreeNode(treeId, () => ({ value }), [value])
 
     return <div data-testid={index?.indexPathString}>{children}</div>
   }

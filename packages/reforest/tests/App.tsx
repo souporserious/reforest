@@ -10,7 +10,7 @@ import {
   flattenLayout,
 } from "@jsxui/layout"
 
-import { mapToChildren, useTree, useTreeNode, useTreeState } from "../src"
+import { mapToChildren, useTree, useTreeId, useTreeNode, useTreeState, usePrerender } from "../src"
 
 const RootNodeContext = React.createContext<LayoutNode | null>(null)
 
@@ -36,7 +36,9 @@ function RootGrid({ children, columns, rows, width, height }: GridProps) {
 }
 
 function SubGrid({ children, columns, rows, width, height }: GridProps) {
-  useTreeNode(() => createGrid({ columns, rows, width, height }))
+  const treeId = useTreeId()
+
+  useTreeNode(treeId, () => createGrid({ columns, rows, width, height }))
 
   return <div style={{ width, height }}>{children}</div>
 }
@@ -65,8 +67,9 @@ function Column({
   height?: number
 }) {
   const tree = useTree(children)
+  const treeId = useTreeId()
 
-  useTreeNode(() => createColumn({ columns, rows, width, height }))
+  useTreeNode(treeId, () => createColumn({ columns, rows, width, height }))
 
   return tree.children
 }
@@ -85,14 +88,17 @@ function Row({
   height?: number
 }) {
   const tree = useTree(children)
+  const treeId = useTreeId()
 
-  useTreeNode(() => createRow({ columns, rows, width, height }))
+  useTreeNode(treeId, () => createRow({ columns, rows, width, height }))
 
   return tree.children
 }
 
 function Space({ size }: { size?: number }) {
-  useTreeNode(() => createSpace({ size }))
+  const treeId = useTreeId()
+
+  useTreeNode(treeId, () => createSpace({ size }))
 
   return null
 }
@@ -112,9 +118,12 @@ function Box({
     throw new Error("Box must be used in Grid.")
   }
 
-  const node = useTreeNode(() => createNode({ width, height }), [width, height])
+  const treeId = useTreeId()
+  const isPrerender = usePrerender()
 
-  if (node.isPrerender) {
+  useTreeNode(treeId, () => createNode({ width, height }), [width, height])
+
+  if (isPrerender) {
     return null
   }
 
@@ -123,7 +132,7 @@ function Box({
   const treeChildren = mapToChildren(treeMap)
   const computedLayout = computeLayout({ ...rootNode, children: treeChildren })
   const flattenedLayout = flattenLayout(computedLayout.layout)
-  const nodeLayout = flattenedLayout?.children.find((treeNode: any) => treeNode.treeId === node.id)
+  const nodeLayout = flattenedLayout?.children.find((treeNode: any) => treeNode.treeId === treeId)
   const computedStyles = {
     width: nodeLayout?.width,
     height: nodeLayout?.height,

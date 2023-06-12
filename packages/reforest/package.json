@@ -1,6 +1,6 @@
 {
   "name": "reforest",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Collect ordered React render data seamlessly across the server and client.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "performant-array-to-tree": "^1.11.0",
-    "zustand": "^4.3.3"
+    "zustand": "^4.3.8"
   },
   "devDependencies": {
     "@jsxui/layout": "^0.1.9",

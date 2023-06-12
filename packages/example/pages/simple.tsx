@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { TreeStateStore } from "reforest"
-import { useTree, useTreeNode, useTreeState } from "reforest"
+import { useTree, useTreeId, useTreeNode, useTreeState, usePrerender } from "reforest"
 
 function TotalDuration({ useTreeStore }: { useTreeStore: TreeStateStore }) {
   const treeMap = useTreeStore((state) => state.treeMap)
@@ -37,7 +37,10 @@ function Child({
   duration: number
 }) {
   const treeMap = useTreeState((state) => state.treeMap)
-  const { isPrerender } = useTreeNode(() => ({ color, duration }), [color, duration])
+  const treeId = useTreeId()
+  const isPrerender = usePrerender()
+
+  useTreeNode(treeId, () => ({ color, duration }), [color, duration])
 
   if (isPrerender) {
     return null
