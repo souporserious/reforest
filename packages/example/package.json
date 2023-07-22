@@ -11,12 +11,16 @@
   "dependencies": {
     "@jsxui/layout": "^0.1.9",
     "@next/font": "^13.4.5",
+    "@react-three/drei": "^9.79.3",
+    "@react-three/fiber": "^8.13.5",
+    "@types/three": "^0.154.0",
     "case-anything": "^2.1.13",
     "motion": "^10.16.2",
     "next": "*",
     "react": "*",
     "react-dom": "*",
     "react-keyed-flatten-children": "^2.2.1",
-    "reforest": "workspace:*"
+    "reforest": "workspace:*",
+    "three": "^0.154.0"
   }
 }

@@ -24,8 +24,9 @@ export default function Page() {
           gap: "0.6rem",
         }}
       >
-        <Link href="/simple">Simple</Link>
+        <Link href="/experience">Experience</Link>
         <Link href="/timeline">Timeline</Link>
+        <Link href="/simple">Simple</Link>
       </div>
     </div>
   )
